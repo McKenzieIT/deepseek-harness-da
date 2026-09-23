@@ -251,6 +251,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/data/admin': { kind: 'indirect', reason: 'Pure admin operation; model integration lives in @deepseek-ai/dsh-nl2sql-engine\'s LLM adapter.' },
   'packages/data/evidence-query': { kind: 'indirect', reason: 'Pure evidence-query operation; model integration lives in @deepseek-ai/dsh-nl2sql-engine\'s LLM adapter.' },
   'packages/data/management-session': { kind: 'indirect', reason: 'Pure management-session operation; model integration lives in @deepseek-ai/dsh-nl2sql-engine\'s LLM adapter.' },
+  'packages/data/management-context': { kind: 'none', reason: 'The service resolves a Management Context to a persistent Management Session and records a durable data-scope binding; it sends nothing to any model and registers no prompt, tool, or model-facing event.' },
   'packages/data/result-cache': { kind: 'indirect', reason: 'Pure result-cache operation; model integration lives in @deepseek-ai/dsh-nl2sql-engine\'s LLM adapter.' },
   'packages/data/schema-gateway': { kind: 'indirect', reason: 'Pure schema-gateway operation; model integration lives in @deepseek-ai/dsh-nl2sql-engine\'s LLM adapter.' },
   'packages/data/tool-discover-alt-labels': { kind: 'indirect', reason: 'Pure alt-label-discovery operation; model integration lives in @deepseek-ai/dsh-nl2sql-engine\'s LLM adapter.' },

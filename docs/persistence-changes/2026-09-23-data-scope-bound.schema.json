@@ -1,0 +1,81 @@
+{
+  "formatVersion": 1,
+  "roots": [
+    {
+      "key": "event:data-scope/bound",
+      "kind": "event",
+      "event": "data-scope/bound",
+      "surface": false,
+      "digest": "c8e9fdac03c9f3fe2d7984edbed326bcc4faee9afff2912087508af7e854f3fe",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "dataScopeId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "workspaceId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "data-scope/bound"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

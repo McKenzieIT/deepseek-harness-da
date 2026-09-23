@@ -4752,6 +4752,81 @@
       }
     },
     {
+      "key": "event:data-scope/bound",
+      "kind": "event",
+      "event": "data-scope/bound",
+      "surface": false,
+      "digest": "c8e9fdac03c9f3fe2d7984edbed326bcc4faee9afff2912087508af7e854f3fe",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "dataScopeId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "workspaceId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "data-scope/bound"
+          }
+        ]
+      }
+    },
+    {
       "key": "event:deliverables/presented",
       "kind": "event",
       "event": "deliverables/presented",
@@ -19026,6 +19101,40 @@
       "sources": []
     },
     {
+      "digest": "1dc36cd0d683c6b3b8a2a0a7edda222ff99c3d2ced7f42de87592c8da3e2f2c9",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "dataScopeId",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "workspaceId",
+                "type": 1,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          }
+        ]
+      },
+      "names": [
+        "event:data-scope/bound.data"
+      ],
+      "sources": [
+        "packages/data/management-context/src/projection.ts:31"
+      ]
+    },
+    {
       "digest": "1df34a6c086866ffdc2dd9e8e5c581c3751a010cdf6b8538a7327f7a3237f0b4",
       "schema": {
         "root": 0,
@@ -32092,6 +32201,7 @@
         "packages/attachment/attachment/src/brand.ts#AttachmentId",
         "packages/compaction/compaction/src/brand.ts#CompactionId",
         "packages/core/session/src/types.ts#SessionId",
+        "packages/data/management-context/src/types.ts#DataScopeId",
         "packages/experimental/agent-team/src/types.ts#TeamId",
         "packages/experimental/agent-team/src/types.ts#TeamMessageId",
         "packages/experimental/agent-team/src/types.ts#TeamTaskId",
@@ -32110,13 +32220,16 @@
         "packages/webhook/webhook/src/brand.ts#WebhookDeliveryId",
         "packages/webhook/webhook/src/brand.ts#WebhookRuleId",
         "packages/webhook/webhook/src/brand.ts#WebhookSourceId",
-        "packages/workflow/workflow/src/types.ts#WorkflowRunId"
+        "packages/workflow/workflow/src/types.ts#WorkflowRunId",
+        "packages/workspace/workspace/src/index.ts#WorkspaceId",
+        "packages/workspace/workspace/src/types.ts#WorkspaceId"
       ],
       "sources": [
         "packages/api/session-controller/src/types.ts:376",
         "packages/attachment/attachment/src/brand.ts:6",
         "packages/compaction/compaction/src/brand.ts:4",
         "packages/core/session/src/types.ts:19",
+        "packages/data/management-context/src/types.ts:24",
         "packages/experimental/agent-team/src/types.ts:20",
         "packages/experimental/agent-team/src/types.ts:32",
         "packages/experimental/agent-team/src/types.ts:8",
@@ -32135,7 +32248,9 @@
         "packages/webhook/webhook/src/brand.ts:12",
         "packages/webhook/webhook/src/brand.ts:6",
         "packages/webhook/webhook/src/brand.ts:9",
-        "packages/workflow/workflow/src/types.ts:13"
+        "packages/workflow/workflow/src/types.ts:13",
+        "packages/workspace/workspace/src/index.ts:29",
+        "packages/workspace/workspace/src/types.ts:16"
       ]
     },
     {
@@ -35076,9 +35191,9 @@
         ]
       },
       "names": [
-        "SessionEventEnvelope[39].sourceEventSeqs",
-        "SessionEventEnvelope[52].sourceEventSeqs",
-        "SessionEventEnvelope[55].sourceEventSeqs",
+        "SessionEventEnvelope[40].sourceEventSeqs",
+        "SessionEventEnvelope[53].sourceEventSeqs",
+        "SessionEventEnvelope[56].sourceEventSeqs",
         "event:assistant/attempt.data.stream[0][0].dt",
         "event:assistant/attempt.data.stream[0][1].dt",
         "event:assistant/attempt.data.stream[0][2].dt",
@@ -43992,6 +44107,20 @@
       ]
     },
     {
+      "digest": "920fdca7e27a5133a6577f618161d1609b6d007db028a41deb9a3d43b5e5dcd5",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "literal",
+            "value": "data-scope/bound"
+          }
+        ]
+      },
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "930a6567a10bb62ddd157bd8abdf4b182810c8c3b49d91309b3b009a5fed9731",
       "schema": {
         "root": 0,
@@ -44559,9 +44688,9 @@
         ]
       },
       "names": [
-        "SessionEventEnvelope[39]",
-        "SessionEventEnvelope[52]",
-        "SessionEventEnvelope[55]"
+        "SessionEventEnvelope[40]",
+        "SessionEventEnvelope[53]",
+        "SessionEventEnvelope[56]"
       ],
       "sources": []
     },
@@ -54105,6 +54234,81 @@
       "sources": []
     },
     {
+      "digest": "c8e9fdac03c9f3fe2d7984edbed326bcc4faee9afff2912087508af7e854f3fe",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "dataScopeId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "workspaceId",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "data-scope/bound"
+          }
+        ]
+      },
+      "names": [
+        "event:data-scope/bound"
+      ],
+      "sources": []
+    },
+    {
       "digest": "c93b6f51b399607349b4bcc66b58e848a44250ffc1e2537207bd092dfff94192",
       "schema": {
         "root": 0,
@@ -58587,8 +58791,8 @@
         "SessionEventEnvelope[36]",
         "SessionEventEnvelope[37]",
         "SessionEventEnvelope[38]",
+        "SessionEventEnvelope[39]",
         "SessionEventEnvelope[3]",
-        "SessionEventEnvelope[40]",
         "SessionEventEnvelope[41]",
         "SessionEventEnvelope[42]",
         "SessionEventEnvelope[43]",
@@ -58601,10 +58805,11 @@
         "SessionEventEnvelope[4]",
         "SessionEventEnvelope[50]",
         "SessionEventEnvelope[51]",
-        "SessionEventEnvelope[53]",
+        "SessionEventEnvelope[52]",
         "SessionEventEnvelope[54]",
-        "SessionEventEnvelope[56]",
+        "SessionEventEnvelope[55]",
         "SessionEventEnvelope[57]",
+        "SessionEventEnvelope[58]",
         "SessionEventEnvelope[5]",
         "SessionEventEnvelope[7]",
         "SessionEventEnvelope[8]",

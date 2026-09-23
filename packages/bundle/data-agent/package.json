@@ -45,6 +45,7 @@
     "@deepseek-ai/dsh-goal-eval-policy": "workspace:^",
     "@deepseek-ai/dsh-admin": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^",
+    "@deepseek-ai/dsh-management-context": "workspace:^",
     "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
     "@deepseek-ai/dsh-phase-gate": "workspace:^",
     "@deepseek-ai/dsh-preset-autojoin": "workspace:^",

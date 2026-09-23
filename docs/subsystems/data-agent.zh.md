@@ -229,6 +229,63 @@ current(): CallerIdentity | undefined
 
 Source: [`packages/identity/identity/src/index.ts`](../../packages/identity/identity/src/index.ts)
 
+<a id="ctxmanagementcontext--managementcontextservice"></a>
+
+### `ctx.managementContext` — `ManagementContextService`
+
+The `ctx.managementContext` service. Owns per-context single-flight, fail-loud validation, session creation pinned to `semantic-layer-management`, and the durable data-scope binding.
+
+```ts cordis-catalog
+/**
+ * Resolve the Management Context to its Management Session, creating one only
+ * when none exists yet. Single-flighted per `(workspaceId, dataScopeId)`:
+ * concurrent default calls for the same context share one resolution and
+ * return the same `sessionId`.
+ * @param request - the Workspace and Data Scope identifying the context.
+ * @returns the resolved session id and whether this call created it.
+ * @throws when the Workspace or Data Scope is unknown, the
+ *   `semantic-layer-management` preset is unavailable, or session creation fails.
+ */
+resolveOrCreate(request: ManagementContextRequest): Promise<ManagementContextResolution>
+
+/**
+ * Always create another Management Session for the context, independent of any
+ * existing session. A subsequent default {@link resolveOrCreate} then selects
+ * the newest matching session by `updatedAt`.
+ * @param request - the Workspace and Data Scope identifying the context.
+ * @returns the new session id, with `created: true`.
+ * @throws when the Workspace or Data Scope is unknown, the
+ *   `semantic-layer-management` preset is unavailable, or session creation fails.
+ */
+async createNew(request: ManagementContextRequest): Promise<ManagementContextResolution>
+```
+
+Source: [`packages/data/management-context/src/index.ts`](../../packages/data/management-context/src/index.ts)
+
+<a id="ctxmanagementcontextgateway--managementcontextgateway"></a>
+
+### `ctx.managementContextGateway` — `ManagementContextGateway`
+
+Host Remote gateway over `ctx.managementContext`. Register as a Host plugin to expose the `managementContext/resolveOrCreate` and `managementContext/createNew` endpoints; the Typert Gateway routes incoming calls through the live `@Remote` markers or the generated strict descriptors.
+
+```ts cordis-catalog
+/**
+ * Remote face of {@link ManagementContextService.resolveOrCreate}.
+ * @param request - the Workspace and Data Scope identifying the context.
+ * @returns the resolved session id and whether this call created it.
+ */
+@Remote('resolveOrCreate') resolveOrCreate(request: ManagementContextRequest): Promise<ManagementContextResolution>
+
+/**
+ * Remote face of {@link ManagementContextService.createNew}.
+ * @param request - the Workspace and Data Scope identifying the context.
+ * @returns the new session id, with `created: true`.
+ */
+@Remote('createNew') createNew(request: ManagementContextRequest): Promise<ManagementContextResolution>
+```
+
+Source: [`packages/data/management-context/src/remote.ts`](../../packages/data/management-context/src/remote.ts)
+
 <a id="ctxmanagementsession--managementsessionservice"></a>
 
 ### `ctx.managementSession` — `ManagementSessionService`
