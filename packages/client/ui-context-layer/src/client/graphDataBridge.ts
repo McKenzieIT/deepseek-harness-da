@@ -38,13 +38,25 @@ function failureDetail(error: unknown): string {
 
 /**
  * Unwrap a RemoteResult: return the value on success, throw on failure.
+ *
+ * Throws `getGraphData RPC failed: ok response missing value` for an `{ ok:
+ * true }` that carries no value. `RemoteResult`'s ok branch declares `value: T`,
+ * but the value is decoded from the wire, so a malformed host response reaches
+ * here; returning it would hand the caller `undefined` typed as `T` and the
+ * failure would surface later as a `data.nodes` TypeError inside React, naming
+ * no RPC. A present `null` is a valid value and is returned. This matches the
+ * rule the canonical helper (`ui-semantic-layer/src/client/remoteResult.ts`)
+ * documents for the evidence-query and schema-gateway bridges.
  * @param result - the RemoteResult from the generated client.
  * @returns the business value (T) when ok.
- * @throws Error when the RPC failed.
+ * @throws Error when the RPC failed or its ok response carried no value.
  */
 function unwrap<T>(result: RemoteResult<T>): T {
   if (!result.ok) {
     throw new Error(`getGraphData RPC failed: ${failureDetail(result.error)}`)
+  }
+  if (result.value === undefined) {
+    throw new Error('getGraphData RPC failed: ok response missing value')
   }
   return result.value
 }

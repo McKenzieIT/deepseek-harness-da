@@ -28,4 +28,18 @@ describe('buildGraphDataClient', () => {
     await client.fetchGraphData()
     expect(remote.getGraphData).toHaveBeenCalledWith(undefined, undefined)
   })
+
+  // `RemoteResult.value` is statically required on the ok branch, but the value
+  // is decoded from the wire, so a malformed `{ ok: true }` reaches this bridge.
+  // Without the guard `unwrap` returns `undefined` typed as GraphData and the
+  // failure surfaces later as a `data.nodes` TypeError inside React, naming no
+  // RPC. The canonical helper (ui-semantic-layer/src/client/remoteResult.ts)
+  // states this rule for both the evidence-query and schema-gateway bridges.
+  it('throws when an ok response carries no value', async () => {
+    const remote = { getGraphData: vi.fn().mockResolvedValue({ ok: true }) }
+    const client = buildGraphDataClient(remote)
+    await expect(client.fetchGraphData()).rejects.toThrow(
+      'getGraphData RPC failed: ok response missing value',
+    )
+  })
 })
