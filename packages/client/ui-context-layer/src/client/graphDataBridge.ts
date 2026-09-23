@@ -1,9 +1,10 @@
 /**
  * Client fetch seam for the semantic-graph RPC. Imports the graph types and
- * the Remote result contract from their owner (`@deepseek-ai/dsh-schema-gateway`
- * + `@deepseek-ai/dsh-typert-protocol`) — the client no longer re-declares
- * them. Unwraps the host's `RemoteResult<SemanticGraphData>` (a discriminated
- * union: `{ ok: true; value } | { ok: false; error: RemoteFailure }`).
+ * the Remote result contract from their owner
+ * (`@deepseek-ai/dsh-schema-gateway/types` + `@deepseek-ai/dsh-typert-protocol`)
+ * — the client no longer re-declares them. Unwraps the host's
+ * `RemoteResult<SemanticGraphData>` (a discriminated union:
+ * `{ ok: true; value } | { ok: false; error: RemoteFailure }`).
  *
  * The `schemaGateway` namespace type comes from the owner-generated
  * `@deepseek-ai/dsh-schema-gateway/remote` augmentation of
@@ -12,7 +13,7 @@
  */
 import type { RemoteResult, TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-schema-gateway/remote'
-import type { SemanticGraphData as GraphData, SemanticGraphQuery as GraphDataOpts } from '@deepseek-ai/dsh-schema-gateway'
+import type { SemanticGraphData as GraphData, SemanticGraphQuery as GraphDataOpts } from '@deepseek-ai/dsh-schema-gateway/types'
 
 /** The schemaGateway Remote namespace (owner-generated contract). */
 type SchemaGatewayRemote = TypertRemoteNamespaceMap['schemaGateway']

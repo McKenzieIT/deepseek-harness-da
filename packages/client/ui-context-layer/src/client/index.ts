@@ -26,7 +26,7 @@ export type {
   SemanticGraphNode as GraphNode,
   SemanticGraphEdge as GraphEdge,
   SemanticGraphQuery as GraphDataOpts,
-} from '@deepseek-ai/dsh-schema-gateway'
+} from '@deepseek-ai/dsh-schema-gateway/types'
 
 export {
   getZoomLevel,

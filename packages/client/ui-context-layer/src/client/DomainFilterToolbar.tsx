@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway'
+import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway/types'
 import { DOMAIN_PALETTE, DOMAIN_BORDER_PALETTE } from './graph-styles.ts'
 
 export interface DomainFilterToolbarProps {

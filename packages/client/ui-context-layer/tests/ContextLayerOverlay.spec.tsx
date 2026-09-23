@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, fireEvent, act, waitFor } from '@testing-library/react'
 import { ContextLayerService } from '../src/client/service.ts'
 import { ContextLayerOverlay } from '../src/client/ContextLayerOverlay.tsx'
-import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway'
+import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway/types'
 import type { GraphDataClient } from '../src/client/graphDataBridge.ts'
 import { en, type ContextLayerKey } from '../src/client/locales.ts'
 

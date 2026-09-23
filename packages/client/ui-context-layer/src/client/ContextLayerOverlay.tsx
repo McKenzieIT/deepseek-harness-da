@@ -2,7 +2,7 @@ import { useSyncExternalStore, useState, useCallback, useEffect, type FC } from 
 import type { ContextLayerService } from './service.ts'
 import type { GraphDataClient } from './graphDataBridge.ts'
 import { ContextLayerView } from './ContextLayerView.tsx'
-import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway'
+import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway/types'
 import type { ContextLayerTranslate } from './locales.ts'
 
 export interface ContextLayerOverlayProps {

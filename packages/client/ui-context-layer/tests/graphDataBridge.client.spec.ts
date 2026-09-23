@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { buildGraphDataClient } from '../src/client/graphDataBridge.ts'
-import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway'
+import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway/types'
 
 describe('buildGraphDataClient', () => {
   const mockData = {

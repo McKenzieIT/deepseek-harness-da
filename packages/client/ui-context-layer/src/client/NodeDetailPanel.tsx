@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { SemanticGraphNode as GraphNode } from '@deepseek-ai/dsh-schema-gateway'
+import type { SemanticGraphNode as GraphNode } from '@deepseek-ai/dsh-schema-gateway/types'
 import { DOMAIN_PALETTE, DOMAIN_BORDER_PALETTE, evalBorderColor } from './graph-styles.ts'
 import { nodeKindPresentation } from './graph-presentation.ts'
 import type { ContextLayerTranslate } from './locales.ts'

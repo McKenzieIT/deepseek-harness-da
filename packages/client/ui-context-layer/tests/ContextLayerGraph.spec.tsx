@@ -2,7 +2,7 @@
 import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest'
 import { render, act } from '@testing-library/react'
 import { ContextLayerGraph } from '../src/client/ContextLayerGraph.tsx'
-import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway'
+import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway/types'
 
 // Mock @antv/g6 with a controllable Graph whose render() returns a fresh
 // DEFERRED promise each call — the test decides when render resolves, so it
