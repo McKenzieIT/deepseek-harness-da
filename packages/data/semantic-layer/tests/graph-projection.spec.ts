@@ -144,3 +144,35 @@ describe('relation targets across two registered kinds (C1)', () => {
     expect(graph.getRelated('beta:x')).toEqual([])
   })
 })
+
+describe('a kind declaring a built-in storage dir (I7)', () => {
+  /** `tables/` holds one real table plus one file only the widget kind accepts. */
+  function seedSharedTablesDir(): { root: string; widget: FixtureKind; svc: SemanticLayerService } {
+    const root = seedRoot(['tables'])
+    writeFileSync(join(root, 'tables', 'orders.yaml'), yaml.dump({ table_name: 'orders', kind: 'dws', columns: [] }))
+    writeFileSync(join(root, 'tables', 'widget-a.yaml'), yaml.dump({ name: 'widget-a' }))
+    const svc = new SemanticLayerService(new Context(), { semanticRoot: root, scopeId: '' })
+    const widget = fixtureKind({ kind: 'widget', storageDir: 'tables', idPrefix: 'widget:' })
+    svc.getRegistry().register(widget)
+    return { root, widget, svc }
+  }
+
+  it('parses that dir with its OWN schema, not the built-in kind schema that owns the directory name', () => {
+    const { widget, svc } = seedSharedTablesDir()
+    const nodes = svc.projectGraphNodes()
+    // The widget kind sees the raw YAML objects and accepts only its own.
+    expect(widget.seen).toContainEqual({ name: 'widget-a' })
+    expect(nodes).toContainEqual({ id: 'widget:widget-a', kind: 'widget', label: 'widget-a', domains: [] })
+    // It never receives the table definition, so it mints no node for it.
+    expect(nodes.filter(node => node.kind === 'widget').map(node => node.id)).toEqual(['widget:widget-a'])
+    // The built-in table kind still owns the table.
+    expect(nodes.find(node => node.id === 'orders')?.kind).toBe('dws')
+  })
+
+  it('indexes that kind in the full retrieval corpus under its own id', () => {
+    const { svc } = seedSharedTablesDir()
+    const ids = svc.loadRetrievalCorpusAll().map(item => item.id)
+    expect(ids).toContain('widget:widget-a')
+    expect(ids).toContain('orders')
+  })
+})

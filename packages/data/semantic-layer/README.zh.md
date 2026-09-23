@@ -75,7 +75,7 @@ P13b 的本地 `CriticGuardData`（params_fields/partitions 来自精简 YAML re
 
 **Disposer 与缓存失效。** `registry.register(plugin)` 返回幂等 disposer，仅撤销本次贡献。registry 在增删时均触发 `onChange` 监听；`SemanticLayerService` 在构造函数中注册一个监听来失效 `graphCache` + `graphCacheByScope`，因此已销毁 kind 的节点/边不会残留，重新注册的 kind 无需重启即可流过。使用 `ctx.effect(() => registry.register(plugin))` 安装贡献，使其生命周期跟踪所属 fiber。构造函数无条件通过 `ctx.effect` 装配该监听与三个内置 kind：缺少 fiber 生命周期的 context 会在构造时失败，而不是产出一个图缓存永不失效的 service。
 
-**输入契约。** `RelationDef.type` 是开放 `string`（`joins` | `derived_from` | `related_to` 或 kind 声明的类型）；`GraphNodeProjection` 携带纯 `string` id + 开放 `kind`。Schema Gateway 在远程边界 brand `id`。`io.ts` 的 `loadDomains` 拒绝 YAML 数组（使用 `isPlainObject`，非 `typeof === 'object'`），使列表形状的 `domains.yaml` 降级为 `{}`。
+**输入契约。** `RelationDef.type` 是开放 `string`（`joins` | `derived_from` | `related_to` 或 kind 声明的类型）；`GraphNodeProjection` 携带纯 `string` id + 开放 `kind`。Schema Gateway 在远程边界 brand `id`。`storageDir` 是目录名而非 loader 选择器：三种专用布局（`events` domain 子目录、扁平 `tables`、扁平 `concepts`）按内置 plugin 实例身份选择，因此声明 `storageDir: 'tables'` 的注册 kind 仍按通用方式读取并由它自己的 `schema.safeParse` 校验，不会收到已解析的 `TableDefinition` 对象。`io.ts` 的 `loadDomains` 拒绝 YAML 数组（使用 `isPlainObject`，非 `typeof === 'object'`），使列表形状的 `domains.yaml` 降级为 `{}`。
 
 <a id="verification"></a>
 ## 验证

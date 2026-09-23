@@ -610,7 +610,7 @@ export class SemanticLayerService extends Service {
   loadRetrievalCorpusAll(): CorpusItem[] {
     const out: CorpusItem[] = []
     for (const plugin of this.registry.allPlugins()) {
-      for (const def of this.loadByStorageDir(plugin.storageDir)) {
+      for (const def of this.loadKindDefinitions(plugin)) {
         const item = plugin.toCorpusItem(def)
         if (item) out.push(item)
         const metrics = plugin.kind === 'table'
@@ -626,38 +626,39 @@ export class SemanticLayerService extends Service {
     return out
   }
 
-  /** Dispatch a storage-dir name to its loader + schema-parse projection. The
-   * optional `root` (W27) lets `buildGraph` load a per-scope root; the default
-   * is the active scope root (`this.semanticRoot`), preserving `loadRetrievalCorpusAll`. */
-  private loadByStorageDir(dir: string, root: string = this.semanticRoot): readonly unknown[] {
-    if (dir === 'events') {
-      const out: unknown[] = []
+  /**
+   * Read one built-in kind's bespoke storage layout: `events` domain subdirs,
+   * the flat `tables` dir, or the flat `concepts` dir, each validated by the
+   * schema that owns that layout. Keyed by the built-in plugin instance rather
+   * than by its `storageDir` string, because a kind registered later may
+   * declare the same directory name and must not be handed another kind's
+   * parsed shape (see {@link loadKindDefinitions}). `root` selects the scope
+   * root to read.
+   */
+  private loadBuiltinDefinitions(plugin: import('./registry.ts').DataSourceKindPlugin, root: string): readonly unknown[] | undefined {
+    const out: unknown[] = []
+    if (plugin === eventKindPlugin) {
       for (const e of loadEvents(root)) {
         const r = EventDefinitionSchema.safeParse(e.raw)
         if (r.success) out.push(r.data)
       }
       return out
     }
-    if (dir === 'tables') {
-      const out: unknown[] = []
+    if (plugin === tableKindPlugin) {
       for (const t of loadTables(root)) {
         const r = TableDefinitionSchema.safeParse(t.raw)
         if (r.success) out.push(r.data)
       }
       return out
     }
-    if (dir === 'concepts') {
-      const out: unknown[] = []
+    if (plugin === conceptKindPlugin) {
       for (const c of loadConcepts(root)) {
         const r = ConceptDefinitionSchema.safeParse(c.raw)
         if (r.success) out.push(r.data)
       }
       return out
     }
-    // M1: 'metrics' is no longer a storage dir — metrics are derived virtually
-    // from host table/event `metrics:` blocks (see loadRetrievalCorpusAll +
-    // getRelationGraph derivation passes). Unknown dirs yield an empty list.
-    return []
+    return undefined
   }
 
   /**
@@ -686,17 +687,17 @@ export class SemanticLayerService extends Service {
 
   /**
    * Load one kind's definitions from a scope root. Bespoke storage layouts
-   * (`events` domain subdirs, `tables`, `concepts`) route through
-   * {@link loadByStorageDir}; any other registered kind's dir is read
-   * generically (`loadRawDir` + the plugin's own `schema.safeParse`), so a
-   * kind registered after build loads without a hardcoded loader. The `root`
-   * (W27) defaults to the active scope root for `projectGraphNodes`; the
-   * relation-graph build passes a per-scope root.
+   * route through {@link loadBuiltinDefinitions}, selected by plugin identity.
+   * Every other kind's dir is read generically (`loadRawDir` + the plugin's
+   * OWN `schema.safeParse`), so a kind registered after build loads without a
+   * hardcoded loader and keeps its own definition shape even when it declares
+   * a directory name a built-in kind also uses. The `root` (W27) defaults to
+   * the active scope root for `projectGraphNodes`; the relation-graph build
+   * passes a per-scope root.
    */
   private loadKindDefinitions(plugin: import('./registry.ts').DataSourceKindPlugin, root: string = this.semanticRoot): readonly unknown[] {
-    if (plugin.storageDir === 'events' || plugin.storageDir === 'tables' || plugin.storageDir === 'concepts') {
-      return this.loadByStorageDir(plugin.storageDir, root)
-    }
+    const builtin = this.loadBuiltinDefinitions(plugin, root)
+    if (builtin !== undefined) return builtin
     const out: unknown[] = []
     for (const raw of loadRawDir(root, plugin.storageDir)) {
       const r = plugin.schema.safeParse(raw)
