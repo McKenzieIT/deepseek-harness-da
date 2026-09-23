@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import type { SemanticGraphNode as GraphNode } from '@deepseek-ai/dsh-schema-gateway/types'
+import type { SemanticGraphEdge, SemanticGraphNode as GraphNode } from '@deepseek-ai/dsh-schema-gateway/types'
 import { DOMAIN_PALETTE, DOMAIN_BORDER_PALETTE, evalBorderColor } from './graph-styles.ts'
-import { nodeKindPresentation } from './graph-presentation.ts'
+import type { GraphDetailRow, GraphPresentationReader } from './graph-presentation.ts'
 import type { ContextLayerTranslate } from './locales.ts'
 
 const CLOSE_GLYPH = '×'
@@ -21,17 +21,41 @@ export interface NodeDetailPanelProps {
    * local index within this node's domains (prior behavior). (ucl-7)
    */
   allDomains?: readonly string[]
+  /**
+   * Relations incident to this node. Each one renders through the presentation
+   * registry, so an unregistered relation kind keeps its raw kind string as its
+   * accessible label instead of reaching the UI unnamed (W27).
+   */
+  relations?: readonly SemanticGraphEdge[]
+  /** Resolves the node and relation kinds this panel renders. */
+  presentation: GraphPresentationReader
   /** Localized node-detail copy. */
   t: ContextLayerTranslate
 }
 
-export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onInsertReference, allDomains, t }) => {
+/** One label/value detail row; the shared row layout for nodes and relations. */
+const DetailRow: FC<{ row: GraphDetailRow }> = ({ row }) => (
+  <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.6 }}>
+    <span style={{ color: '#666', flex: '0 0 96px' }}>{row.label}</span>
+    <span style={{ color: '#333', wordBreak: 'break-all' }}>{row.value}</span>
+  </div>
+)
+
+export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({
+  node,
+  onClose,
+  onInsertReference,
+  allDomains,
+  relations,
+  presentation,
+  t,
+}) => {
   if (!node) return null
 
-  // Presentation registry: known kinds get a localized label + palette color,
-  // unknown kinds fall back to the raw kind string + a neutral color (never
-  // dropped, never a crash).
-  const { label: kindLabel, color: kindColor } = nodeKindPresentation(node.kind, t)
+  // Presentation registry: a registered kind gets its localized label, icon,
+  // and palette color; an unregistered kind falls back to the raw kind string
+  // plus a neutral color, and still yields detail rows.
+  const kindPresentation = presentation.resolveNode(node, t)
 
   return (
     <div
@@ -45,6 +69,7 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
         flexDirection: 'column',
         height: '100%',
         boxSizing: 'border-box',
+        overflowY: 'auto',
       }}
     >
       {/* Header */}
@@ -57,11 +82,16 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
               fontWeight: 500,
               padding: '2px 6px',
               borderRadius: 4,
-              background: kindColor,
+              background: kindPresentation.style.fill,
               color: '#fff',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
             }}
           >
-            {kindLabel}
+            {/* The glyph repeats the adjacent label, so it is decorative here. */}
+            <span aria-hidden="true">{kindPresentation.icon}</span>
+            <span>{kindPresentation.label}</span>
           </span>
         </div>
         <button
@@ -130,6 +160,35 @@ export const NodeDetailPanel: FC<NodeDetailPanelProps> = ({ node, onClose, onIns
               {Math.round(node.evalPassRate * 100)}%
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Kind detail rows: generic rows plus whatever the kind's renderer adds */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>{t('node.detail')}</div>
+        {kindPresentation.detail.map(row => <DetailRow key={row.id} row={row} />)}
+      </div>
+
+      {/* Relations, each through its own kind presentation */}
+      {relations !== undefined && relations.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>{t('node.relations')}</div>
+          {relations.map((edge, i) => {
+            const rel = presentation.resolveRelation(edge, t)
+            return (
+              <div
+                key={`${edge.source}-${edge.type}-${edge.target}-${i}`}
+                style={{ marginBottom: 8, paddingLeft: 8, borderLeft: `2px solid ${rel.style.stroke}` }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500 }}>
+                  {/* The glyph repeats the adjacent label, so it is decorative here. */}
+                  <span aria-hidden="true">{rel.icon}</span>
+                  <span>{rel.label}</span>
+                </div>
+                {rel.detail.map(row => <DetailRow key={row.id} row={row} />)}
+              </div>
+            )
+          })}
         </div>
       )}
 

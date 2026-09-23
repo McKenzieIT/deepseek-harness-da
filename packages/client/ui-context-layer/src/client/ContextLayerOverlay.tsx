@@ -3,16 +3,19 @@ import type { ContextLayerService } from './service.ts'
 import type { GraphDataClient } from './graphDataBridge.ts'
 import { ContextLayerView } from './ContextLayerView.tsx'
 import type { SemanticGraphData as GraphData } from '@deepseek-ai/dsh-schema-gateway/types'
+import type { GraphPresentationReader } from './graph-presentation.ts'
 import type { ContextLayerTranslate } from './locales.ts'
 
 export interface ContextLayerOverlayProps {
   service: ContextLayerService
   graphClient?: GraphDataClient | null
+  /** Resolves the node and relation kinds the overlay's graph renders. */
+  presentation: GraphPresentationReader
   /** Localized copy for the overlay and its component tree. */
   t: ContextLayerTranslate
 }
 
-export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, graphClient, t }) => {
+export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, graphClient, presentation, t }) => {
   const snapshot = useSyncExternalStore(service.subscribe, service.getSnapshot)
   const [data, setData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -67,6 +70,7 @@ export const ContextLayerOverlay: FC<ContextLayerOverlayProps> = ({ service, gra
         <ContextLayerView
           data={data}
           messages={[]}
+          presentation={presentation}
           t={t}
         />
       </div>

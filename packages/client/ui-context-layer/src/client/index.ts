@@ -14,6 +14,7 @@ import type { TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
 import { ContextLayerService, type IContextLayer } from './service.ts'
 import { ContextLayerOverlay } from './ContextLayerOverlay.tsx'
 import { buildGraphDataClient } from './graphDataBridge.ts'
+import { createGraphPresentationRegistry } from './graph-presentation.ts'
 import { en, zh, type ContextLayerKey } from './locales.ts'
 
 export {
@@ -43,9 +44,27 @@ export {
   comboStyle,
   evalBorderColor,
   GENERIC_NODE_COLOR,
+  GENERIC_EDGE_COLOR,
   DOMAIN_PALETTE,
   DOMAIN_BORDER_PALETTE,
 } from './graph-styles.ts'
+
+export {
+  createGraphPresentationRegistry,
+  GENERIC_NODE_ICON,
+  GENERIC_RELATION_ICON,
+  type GraphDetailRow,
+  type GraphPresentationReader,
+  type GraphPresentationRegistry,
+  type NodeDetailRenderer,
+  type NodeKindSpec,
+  type NodeKindStyle,
+  type NodePresentation,
+  type RelationDetailRenderer,
+  type RelationKindSpec,
+  type RelationKindStyle,
+  type RelationPresentation,
+} from './graph-presentation.ts'
 
 export {
   NarrationGate,
@@ -136,6 +155,10 @@ export const inject = ['slots', 'locale'] as const
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-context-layer: dictionaries')
   const service = new ContextLayerService()
+  // One registry handle per plugin instance, seeded with the built-in node and
+  // relation kinds. Components receive its read face as an ordinary prop, so no
+  // module-level state decides how a kind looks.
+  const presentation = createGraphPresentationRegistry()
 
   ctx.effect(() => ctx.reflect.provide('contextLayer', service), 'ui-context-layer: service')
 
@@ -151,7 +174,7 @@ export function apply(ctx: Context): void {
       id: 'context-layer-fullscreen',
       order: 1000,
       locale: NS,
-      inject: () => ({ service, graphClient }),
+      inject: () => ({ service, graphClient, presentation }),
     }, ContextLayerOverlay)
 
     return disposeOverlay

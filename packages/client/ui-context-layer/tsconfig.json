@@ -12,6 +12,9 @@
       "path": "../locale"
     },
     {
+      "path": "../../util/brand"
+    },
+    {
       "path": "../../../vendor/cordis"
     },
     {

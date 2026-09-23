@@ -47,6 +47,7 @@
   "devDependencies": {
     "@antv/g6": "^5.0.0",
     "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-brand": "workspace:^",
     "@deepseek-ai/dsh-client-connection": "workspace:^",
     "@deepseek-ai/dsh-client-locale": "workspace:^",
     "@deepseek-ai/dsh-client-ui-layout": "workspace:^",

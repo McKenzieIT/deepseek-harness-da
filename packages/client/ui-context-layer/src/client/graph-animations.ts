@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Graph } from '@antv/g6'
 import type { GraphUpdate } from './narration-gate.ts'
-import { evalBorderColor, nodeKindColor } from './graph-styles.ts'
+import { GENERIC_NODE_COLOR, evalBorderColor } from './graph-styles.ts'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -437,7 +437,7 @@ export interface OverlayModeState {
 /**
  * Hook that manages the diagnostic overlay mode for the graph.
  *
- * - off: normal styling (kind-based fill + eval border)
+ * - off: normal styling (the presentation-resolved fill + eval border)
  * - coverage: binary coloring — green if node has eval data, gray if not
  * - heatmap: pass-rate gradient fill (red→yellow→green)
  *
@@ -461,17 +461,23 @@ export function useOverlayMode(graph: Graph | null): OverlayModeState {
     if (nodeData.length === 0) return
 
     const updates = nodeData.map((node) => {
+      // The G6 payload is `unknown` to this module, and its `data` compartment
+      // survives round trips through G6, so both reads are narrowed rather than
+      // asserted. `fill` is the fill ContextLayerGraph already resolved through
+      // the presentation registry; this hook restores it instead of re-deriving
+      // it from a node kind, so the animation layer reads no business field
+      // except the eval pass rate the overlay modes exist to display.
       const data = (node as { data?: Record<string, unknown> }).data ?? {}
-      const kind = (data.kind ?? 'dws') as string
-      const evalPassRate = data.evalPassRate as number | undefined
+      const fill = typeof data.fill === 'string' ? data.fill : GENERIC_NODE_COLOR
+      const evalPassRate = typeof data.evalPassRate === 'number' ? data.evalPassRate : undefined
 
       switch (mode) {
         case 'off':
-          // Restore normal kind-based styling
+          // Restore the presentation-resolved fill and the eval border
           return {
             id: node.id,
             style: {
-              fill: nodeKindColor(kind),
+              fill,
               stroke: evalBorderColor(evalPassRate),
               lineWidth: evalPassRate !== undefined ? 3 : 1,
             },

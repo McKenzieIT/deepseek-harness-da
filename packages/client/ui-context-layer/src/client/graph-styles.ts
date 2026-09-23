@@ -1,44 +1,30 @@
 /**
- * G6 v5 node/edge/combo style definitions for the context layer graph.
+ * Palette and G6 v5 style mapping for the context-layer graph.
  *
- * Node colors by kind:
- *  - dws  = blue (#1890ff)
- *  - dim  = green (#52c41a)
- *  - event = orange (#fa8c16)
- *  - metric = purple (#722ed1)
- *  - concept = magenta (#eb2f96)
- *  - unknown kind = neutral gray (generic fallback — open kinds never crash)
+ * This module owns colors and the translation from a resolved presentation into
+ * a G6 element spec. It owns no kind table: which fill, stroke, and dash a node
+ * or relation kind wears is decided by the presentation registry
+ * (`graph-presentation.ts`), so a kind registered there needs no edit here.
  *
  * Eval pass-rate overlay: border color transitions from red (0%) through
  * yellow (50%) to green (100%). Undefined eval = neutral gray border.
  */
+import type { NodeKindStyle, RelationKindStyle } from './graph-presentation.ts'
 
-/** Neutral fill for an unknown node kind (generic fallback). */
+/** Neutral fill for a node kind with no dedicated presentation. */
 export const GENERIC_NODE_COLOR = '#8c8c8c'
 
-/** Base fill colors for the known node kinds; open kinds fall back via {@link nodeKindColor}. */
-export const KIND_COLORS: Record<string, string> = {
-  dws: '#1890ff',
-  dim: '#52c41a',
-  event: '#fa8c16',
-  metric: '#722ed1',
-  concept: '#eb2f96',
-}
+/** Neutral stroke for a relation kind with no dedicated presentation. */
+export const GENERIC_EDGE_COLOR = 'rgba(0,0,0,0.45)'
 
-/**
- * Fill color for an open node kind. Known kinds map to their palette color;
- * any unknown kind falls back to {@link GENERIC_NODE_COLOR} so a kind
- * registered on the Host renders without a client change and never yields an
- * undefined fill (W27: own-property lookup — a plain `??` would return the
- * truthy `Object.prototype.toString` for `nodeKindColor('toString')`).
- * @param kind - the open node kind string.
- * @returns a CSS color string.
- */
-export function nodeKindColor(kind: string): string {
-  if (!Object.hasOwn(KIND_COLORS, kind)) return GENERIC_NODE_COLOR
-  const color = KIND_COLORS[kind]
-  return color ?? GENERIC_NODE_COLOR
-}
+/** Stroke for an inter-combo (aggregate) edge, which is thicker and translucent. */
+export const AGGREGATE_EDGE_COLOR = 'rgba(0,0,0,0.25)'
+
+/** Border for a node with no eval data. */
+export const NO_EVAL_BORDER_COLOR = '#d9d9d9'
+
+/** Base diameter of a node circle, before the LOD scale. */
+export const NODE_SIZE = 32
 
 /** Domain combo background tints (10 slots, cycled by domain index). */
 export const DOMAIN_PALETTE: readonly string[] = [
@@ -59,7 +45,7 @@ export const DOMAIN_BORDER_PALETTE: readonly string[] = [
  * @returns the result
  */
 export function evalBorderColor(passRate: number | undefined): string {
-  if (passRate === undefined) return '#d9d9d9'
+  if (passRate === undefined) return NO_EVAL_BORDER_COLOR
   // Red → Yellow → Green gradient
   if (passRate <= 0.5) {
     const t = passRate * 2
@@ -74,31 +60,33 @@ export function evalBorderColor(passRate: number | undefined): string {
 }
 
 /**
- * Produce the G6 v5 node style spec for an open node kind and eval pass rate.
+ * Produce the G6 v5 node style spec from a resolved node presentation style.
  * Used at both initial render and when LOD level changes.
- * @param kind - the open node kind string.
- * @param evalPassRate - evalPassRate
- * @returns the result
+ * @param style - the fill/stroke/width the presentation registry resolved.
+ * @returns the G6 node style spec.
  */
-export function nodeStyle(kind: string, evalPassRate?: number): Record<string, unknown> {
+export function nodeStyle(style: NodeKindStyle): Record<string, unknown> {
   return {
-    fill: nodeKindColor(kind),
-    stroke: evalBorderColor(evalPassRate),
-    lineWidth: evalPassRate !== undefined ? 3 : 1,
-    size: 32,
+    fill: style.fill,
+    stroke: style.stroke,
+    lineWidth: style.lineWidth,
+    size: NODE_SIZE,
   }
 }
 
 /**
- * Edge style spec. Inter-combo (aggregate) edges are thicker and translucent;
- * intra-combo edges are thin.
- * @param isAggregate - isAggregate
- * @returns the result
+ * Produce the G6 v5 edge style spec from a resolved relation presentation style.
+ * An inter-combo (aggregate) edge overrides the stroke and width with the
+ * translucent aggregate pair; the relation's own dash survives either way.
+ * @param style - the stroke/width/dash the presentation registry resolved.
+ * @param isAggregate - whether the edge spans two combos.
+ * @returns the G6 edge style spec.
  */
-export function edgeStyle(isAggregate = false): Record<string, unknown> {
+export function edgeStyle(style: RelationKindStyle, isAggregate = false): Record<string, unknown> {
   return {
-    stroke: isAggregate ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.45)',
-    lineWidth: isAggregate ? 3 : 1,
+    stroke: isAggregate ? AGGREGATE_EDGE_COLOR : style.stroke,
+    lineWidth: isAggregate ? 3 : style.lineWidth,
+    lineDash: style.lineDash,
     endArrow: true,
   }
 }
