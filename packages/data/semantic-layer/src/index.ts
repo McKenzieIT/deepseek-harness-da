@@ -584,32 +584,11 @@ export class SemanticLayerService extends Service {
         }
       }
     }
-    // W27: canonical target resolution. A kind's `relations()` may reference a
-    // target by its bare name (e.g. `first`) while the node projection minted
-    // a prefixed id (`chart:first`). Map bare names → canonical node ids so
-    // the edge `chart:second → first` becomes `chart:second → chart:first` and
-    // flows through getGraphData + bounded traversal. Exact id matches always
-    // win (registered first); a bare name only maps to a prefixed id when no
-    // node carries that bare name directly.
-    const targetMap = new Map<string, string>()
-    for (const { sourceId } of entries) {
-      if (!targetMap.has(sourceId)) targetMap.set(sourceId, sourceId)
-      const colon = sourceId.indexOf(':')
-      if (colon >= 0) {
-        const bare = sourceId.slice(colon + 1)
-        if (bare && !targetMap.has(bare)) targetMap.set(bare, sourceId)
-      }
-    }
-    const resolvedEntries = entries.length === 0
-      ? entries
-      : entries.map(e => ({
-        sourceId: e.sourceId,
-        relations: e.relations.map((r) => {
-          const resolved = targetMap.get(r.target)
-          return resolved !== undefined && resolved !== r.target ? { ...r, target: resolved } : r
-        }),
-      }))
-    g.build(resolvedEntries, aliasData)
+    // `RelationDef.target` is already the canonical node id its owning kind
+    // mints in `toGraphNode`, so the entries are built verbatim — no name
+    // resolution. A target naming no projected node stays as declared and the
+    // Schema Gateway drops the edge (both endpoints must be projected nodes).
+    g.build(entries, aliasData)
     return g
   }
 

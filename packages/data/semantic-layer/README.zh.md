@@ -71,7 +71,7 @@ P13b 的本地 `CriticGuardData`（params_fields/partitions 来自精简 YAML re
 
 ## 图投影与 registry 生命周期 (W27)
 
-语义图投影由 **registry 驱动**：`projectGraphNodes()` 迭代每个已注册 kind 的 `toGraphNode(def)`——无手写三组平行循环——因此构建后注册的 kind 无需修改网关即可进入图。`buildGraph(root)` 以同样方式收集关系（迭代 registry），加上规范目标解析步骤，将裸关系目标（`first`）映射为带前缀的节点 id（`chart:first`），使带前缀 id 节点之间的边能流过有界遍历。派生 `metric` 贡献者与 concept→asset domain 派生是 registry 循环之后的横切步骤。
+语义图投影由 **registry 驱动**：`projectGraphNodes()` 迭代每个已注册 kind 的 `toGraphNode(def)`——无手写三组平行循环——因此构建后注册的 kind 无需修改网关即可进入图。`buildGraph(root)` 以同样方式收集关系（迭代 registry）。kind 必须把 `RelationDef.target` 声明为目标 kind 在 `toGraphNode` 中铸造的规范节点 id，含前缀（`chart:first`，而非 `first`）：构建过程原样存储 target，因为两个 kind 可能持有同名节点，把裸名映射到带前缀 id 会静默把边路由到错误节点。target 未命中任何已投影节点时不产生边。concept→asset domain 派生是 registry 循环之后的横切步骤。
 
 **Disposer 与缓存失效。** `registry.register(plugin)` 返回幂等 disposer，仅撤销本次贡献。registry 在增删时均触发 `onChange` 监听；`SemanticLayerService` 在构造函数中注册一个监听来失效 `graphCache` + `graphCacheByScope`，因此已销毁 kind 的节点/边不会残留，重新注册的 kind 无需重启即可流过。使用 `ctx.effect(() => registry.register(plugin))` 安装贡献，使其生命周期跟踪所属 fiber。
 

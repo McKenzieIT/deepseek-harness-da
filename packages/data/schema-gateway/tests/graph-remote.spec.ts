@@ -1,17 +1,14 @@
 /**
- * W27 graph projection through the real `@Remote('getGraphData')` Schema
- * Gateway service method. Tests the Remote-assembly logic (registry-driven
- * projection, canonical target mapping, bounded traversal, invalid-file
- * isolation, disposer cache invalidation, error propagation) by calling the
- * real `SchemaGateway.getGraphData` directly — the method IS the
- * `@Remote('getGraphData')` implementation, so this exercises the real Remote
- * service, not fake component data.
+ * Service-level coverage of `SchemaGateway.getGraphData`: registry-driven
+ * projection, bounded traversal, invalid-file isolation, disposer cache
+ * invalidation, and Host error propagation. The method is called in process,
+ * so this is NOT Remote-assembly evidence — it never reaches the generated
+ * codec, wire serialization, the 2-argument client arity, or `RemoteResult`
+ * wrapping. `apps/web/tests/semantic-graph-remote.e2e.ts` owns that round trip.
  *
- * Host-only faces: `SchemaGateway` + `SemanticLayerService` from host package
- * entry points — fits `tsconfig.host.json` (neutral `.spec.ts` suffix, no
- * `/client` imports → no TS6307 cross-program error). The wire-transport
- * (Fetch carrier) is covered by the e2e scaffold at `apps/web/tests/`; this
- * test focuses on the Remote service logic.
+ * Host-only faces (`SchemaGateway` + `SemanticLayerService` package entries)
+ * keep the file in `tsconfig.host.json`: a `packages/**` test importing a
+ * `/client` face as well fits no single program (TS6307).
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -58,11 +55,13 @@ function seedGraphRoot(): string {
     'table_name: orders\nkind: dws\ndomains: [economy]\ncolumns: []\n')
   writeFileSync(join(root, 'tables', 'other.yaml'),
     'table_name: other\nkind: dim\ndomains: [other]\ncolumns: []\nprimary_key: [other_id]\nlabel_columns: [other_name]\n')
-  // Charts — open kind with `visualizes` relation + canonical target mapping.
+  // Charts — an open kind with its own `visualizes` relation. Every `target` is
+  // the canonical node id of the kind that owns it: bare for a table, `chart:`
+  // prefixed for a chart.
   writeFileSync(join(root, 'charts', 'first.yaml'), 'name: first\ntarget: orders\n')
-  writeFileSync(join(root, 'charts', 'second.yaml'), 'name: second\ntarget: first\n')
+  writeFileSync(join(root, 'charts', 'second.yaml'), 'name: second\ntarget: chart:first\n')
   writeFileSync(join(root, 'charts', 'hidden.yaml'), 'name: hidden\ntarget: orders\nvisible: false\n')
-  writeFileSync(join(root, 'charts', 'dangling.yaml'), 'name: dangling\ntarget: hidden\n')
+  writeFileSync(join(root, 'charts', 'dangling.yaml'), 'name: dangling\ntarget: chart:hidden\n')
   writeFileSync(join(root, 'charts', 'cross.yaml'), 'name: cross\ntarget: other\n')
   // Invalid files — must be isolated (not abort the graph build).
   writeFileSync(join(root, 'charts', 'malformed.yaml'), 'name: [\n')
@@ -82,18 +81,17 @@ function makeGraphGateway(): { gw: SchemaGateway; svc: SemanticLayerService; ctx
 }
 
 describe('SchemaGateway.getGraphData through real @Remote service (W27)', () => {
-  it('projects an open kind with `visualizes` relation + canonical target mapping + bounded traversal', () => {
+  it('projects an open kind with its `visualizes` relation under bounded traversal', () => {
     const { gw } = makeGraphGateway()
-    // focus chart:first, depth 1 — reaches chart:first, chart:second (→first),
-    // and orders (chart:first → orders via `visualizes`).
+    // focus chart:first, depth 1 — reaches chart:first, chart:second
+    // (→chart:first), and orders (chart:first → orders via `visualizes`).
     const result = gw.getGraphData({ focus: 'chart:first', depth: 1 })
     expect(result.nodes.map(n => n.id as string).sort()).toEqual(['chart:first', 'chart:second', 'orders'])
     expect(result.edges).toContainEqual({
       source: 'chart:first', target: 'orders', type: 'visualizes',
     })
-    // Canonical target mapping: chart:second → `first` (bare name) is
-    // resolved to `chart:first` (prefixed id) so the edge flows through the
-    // bounded BFS instead of being dropped as an unknown target.
+    // A chart→chart edge crosses the `chart:` namespace and flows through the
+    // bounded BFS on the id the chart kind declared.
     expect(result.edges).toContainEqual({
       source: 'chart:second', target: 'chart:first', type: 'visualizes',
     })

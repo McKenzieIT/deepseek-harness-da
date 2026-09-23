@@ -39,7 +39,15 @@ export interface CriticFields {
 export interface RelationDef {
   /** Open relation kind — `joins` | `derived_from` | `related_to` or a kind-declared type. */
   readonly type: string
-  /** Target data-source id. */
+  /**
+   * The canonical node id of the target data source — exactly the `id` its
+   * owning kind mints in {@link DataSourceKindPlugin.toGraphNode}, including
+   * any namespace prefix (`concept:sales`, not `sales`). The graph build stores
+   * it verbatim: nothing maps a bare name onto a prefixed id, because two kinds
+   * may hold a node of the same name and any such mapping would silently route
+   * the edge to the wrong one. A target naming no projected node yields no
+   * edge in the Schema Gateway projection rather than an error.
+   */
   readonly target: string
   /** Join condition expression (e.g. "charm_id = charm_id"). */
   readonly on?: string
