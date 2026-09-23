@@ -72,6 +72,45 @@ export interface GraphNodeProjection {
   readonly domains: readonly string[]
 }
 
+/**
+ * Virtual definitions a kind derives from each of its own definitions, and how
+ * to project them (W27). Declared by the kind so nothing in the projection
+ * branches on a kind string: a kind registered later contributes derived nodes
+ * the same way the built-ins do. `metric` is the shipped case — the `table` and
+ * `event` kinds each derive one metric per inline `metrics:` entry.
+ *
+ * A derived definition is projected, related, and indexed exactly like a stored
+ * one, including the canonical-id rule on {@link RelationDef.target}.
+ */
+export interface DerivedNodeContributor<T = unknown, D = unknown> {
+  /** Derive one definition's virtual definitions; empty when it has none. */
+  derive(def: T): readonly D[]
+  /** Project one derived definition as a graph node, or `null` to keep it out of the graph. */
+  toGraphNode(derived: D): GraphNodeProjection | null
+  /** Relations one derived definition declares; empty array when it declares none. */
+  relations(derived: D): RelationDef[]
+  /** Corpus item for one derived definition, or `null` to skip retrieval indexing. */
+  toCorpusItem(derived: D): CorpusItem | null
+}
+
+/**
+ * Declares a kind whose nodes are taxonomy groups (W27): each node of this kind
+ * names a group that nodes of OTHER kinds join by listing that name in
+ * {@link GraphNodeProjection.domains}. The graph build derives one
+ * group→member edge per resolved name and reports unresolved names through
+ * `SemanticLayerService.getDanglingDomainRefs()` instead of aborting the build.
+ *
+ * A grouping node's own `domains` carry its group name, so nodes of a grouping
+ * kind contribute no member references of their own — that would be a self-loop.
+ * `concept` is the shipped case.
+ */
+export interface KindGrouping {
+  /** The group name one node of this kind defines (`concept:sales` → `sales`). */
+  groupName(node: GraphNodeProjection): string
+  /** Relation type of each derived group→member edge. */
+  readonly memberRelationType: string
+}
+
 // ── DataSourceKindPlugin<T> (G1 §D2) ───────────────────────────────────
 
 /** Minimal schema interface (structurally matches zod schemas without hard dep). */
@@ -128,6 +167,18 @@ export interface DataSourceKindPlugin<T = unknown> {
    * editing the gateway.
    */
   toGraphNode(def: T): GraphNodeProjection | null
+
+  /**
+   * Virtual definitions this kind derives from each of its own definitions
+   * (W27). Omit when the kind derives nothing.
+   */
+  readonly derivedNodes?: DerivedNodeContributor<T>
+
+  /**
+   * Declares this kind's nodes as taxonomy groups other kinds join through
+   * `GraphNodeProjection.domains` (W27). Omit for an ordinary asset kind.
+   */
+  readonly grouping?: KindGrouping
 
   /**
    * Return an executable rule/SQL template (G2, MetricPlugin only — removed in M1b; retained as optional interface for backward-compat).

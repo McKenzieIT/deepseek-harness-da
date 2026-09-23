@@ -176,3 +176,135 @@ describe('a kind declaring a built-in storage dir (I7)', () => {
     expect(ids).toContain('orders')
   })
 })
+
+describe('declared kind capabilities (I6)', () => {
+  /** One derived definition: a part belonging to a gadget. */
+  interface GadgetPart {
+    readonly id: string
+    readonly gadget: string
+  }
+
+  /** A gadget definition, optionally listing the parts it derives. */
+  interface GadgetDefinition {
+    readonly name: string
+    readonly parts: readonly string[]
+  }
+
+  const gadgetSchema: SchemaLike<GadgetDefinition> = {
+    parse(raw) {
+      const record = raw as Record<string, unknown>
+      if (typeof record.name !== 'string') throw new Error('gadgetSchema: no name')
+      return {
+        name: record.name,
+        parts: Array.isArray(record.parts) ? record.parts.filter((p): p is string => typeof p === 'string') : [],
+      }
+    },
+    safeParse(raw) {
+      try {
+        return { success: true, data: this.parse(raw) }
+      } catch (error) {
+        return { success: false, error }
+      }
+    },
+  }
+
+  /** A kind that derives one virtual `part` node per listed part. */
+  const gadgetKind: DataSourceKindPlugin<GadgetDefinition> = {
+    kind: 'gadget',
+    storageDir: 'gadgets',
+    schema: gadgetSchema,
+    getId: raw => (typeof raw.name === 'string' ? `gadget:${raw.name}` : undefined),
+    toCorpusItem: def => ({ id: `gadget:${def.name}`, description: def.name }),
+    toPromptContext: def => def.name,
+    relations: () => [],
+    toGraphNode: def => ({ id: `gadget:${def.name}`, kind: 'gadget', label: def.name, domains: [] }),
+    derivedNodes: {
+      derive: (def): readonly GadgetPart[] => def.parts.map(id => ({ id, gadget: def.name })),
+      toGraphNode: (part: GadgetPart): GraphNodeProjection => ({
+        id: `part:${part.id}`, kind: 'part', label: part.id, domains: [],
+      }),
+      relations: (part: GadgetPart): RelationDef[] => [{ type: 'part_of', target: `gadget:${part.gadget}` }],
+      toCorpusItem: (part: GadgetPart): CorpusItem => ({ id: `part:${part.id}`, description: part.id }),
+    },
+  }
+
+  /** A kind whose nodes group other kinds' nodes by name. */
+  const teamKind: DataSourceKindPlugin<NamedDefinition> = {
+    ...fixtureKind({ kind: 'team', storageDir: 'teams', idPrefix: 'team:' }),
+    toGraphNode: def => ({ id: `team:${def.name}`, kind: 'team', label: def.name, domains: [def.name] }),
+    grouping: {
+      groupName: node => node.id.slice('team:'.length),
+      memberRelationType: 'staffs',
+    },
+  }
+
+  it('lets a registered kind contribute derived nodes to the graph, its edges, and the corpus', () => {
+    const root = seedRoot(['gadgets'])
+    writeFileSync(join(root, 'gadgets', 'g1.yaml'), yaml.dump({ name: 'g1', parts: ['hinge'] }))
+    const svc = new SemanticLayerService(new Context(), { semanticRoot: root, scopeId: '' })
+    svc.getRegistry().register(gadgetKind)
+
+    expect(svc.projectGraphNodes()).toContainEqual({ id: 'part:hinge', kind: 'part', label: 'hinge', domains: [] })
+    expect(svc.getRelationGraph().getRelated('part:hinge')).toEqual([{ targetId: 'gadget:g1', type: 'part_of' }])
+    expect(svc.loadRetrievalCorpusAll().map(item => item.id)).toContain('part:hinge')
+  })
+
+  it('lets a registered kind act as a grouping kind, deriving group edges and reporting unresolved names', () => {
+    const root = seedRoot(['teams', 'workers'])
+    writeFileSync(join(root, 'teams', 'alpha.yaml'), yaml.dump({ name: 'alpha' }))
+    writeFileSync(join(root, 'workers', 'w1.yaml'), yaml.dump({ name: 'w1', domains: ['alpha'] }))
+    writeFileSync(join(root, 'workers', 'w2.yaml'), yaml.dump({ name: 'w2', domains: ['ghost'] }))
+    const svc = new SemanticLayerService(new Context(), { semanticRoot: root, scopeId: '' })
+    svc.getRegistry().register(teamKind)
+    svc.getRegistry().register(fixtureKind({ kind: 'worker', storageDir: 'workers', idPrefix: 'worker:' }))
+
+    const graph = svc.getRelationGraph()
+    expect(graph.getRelated('team:alpha')).toEqual([{ targetId: 'worker:w1', type: 'staffs' }])
+    expect(graph.getRelated('worker:w1')).toEqual([{ targetId: 'team:alpha', type: 'staffs' }])
+    // A grouping node names its own group, so it is never its own member.
+    expect(graph.getRelated('team:alpha').some(edge => edge.targetId === 'team:alpha')).toBe(false)
+    // An unresolved group name is skipped and reported, not fatal.
+    expect(graph.getRelated('worker:w2')).toEqual([])
+    expect(svc.getDanglingDomainRefs()).toEqual(['asset="worker:w2" domain="ghost"'])
+  })
+})
+
+describe('skipping derived nodes the caller discards (I4)', () => {
+  /** A table carrying one inline metric, so `metric` nodes are derivable. */
+  function seedTableWithMetric(): SemanticLayerService {
+    const root = seedRoot(['tables'])
+    writeFileSync(join(root, 'tables', 'orders.yaml'), yaml.dump({
+      table_name: 'orders', kind: 'dws', columns: [], metrics: { total: { expression: 'SUM(amount)' } },
+    }))
+    return new SemanticLayerService(new Context(), { semanticRoot: root, scopeId: '' })
+  }
+
+  it('projects derived nodes by default and omits them when not requested', () => {
+    const svc = seedTableWithMetric()
+    const withDerived = svc.projectGraphNodes().map(node => node.id)
+    expect(withDerived).toContain('orders')
+    expect(withDerived).toContain('orders__total')
+    expect(svc.projectGraphNodes({ includeDerived: false }).map(node => node.id)).toEqual(['orders'])
+  })
+
+  it('never asks a kind to derive nodes the caller will discard', () => {
+    const root = seedRoot(['gizmos'])
+    writeFileSync(join(root, 'gizmos', 'g1.yaml'), yaml.dump({ name: 'g1' }))
+    const svc = new SemanticLayerService(new Context(), { semanticRoot: root, scopeId: '' })
+    let derivations = 0
+    svc.getRegistry().register({
+      ...fixtureKind({ kind: 'gizmo', storageDir: 'gizmos', idPrefix: 'gizmo:' }),
+      derivedNodes: {
+        derive: (def) => { derivations++; return [{ id: `${def.name}-shadow` }] },
+        toGraphNode: (shadow: { id: string }) => ({ id: shadow.id, kind: 'shadow', label: shadow.id, domains: [] }),
+        relations: () => [],
+        toCorpusItem: () => null,
+      },
+    })
+
+    expect(svc.projectGraphNodes({ includeDerived: false }).map(node => node.id)).toEqual(['gizmo:g1'])
+    expect(derivations).toBe(0)
+    expect(svc.projectGraphNodes().map(node => node.id)).toEqual(['gizmo:g1', 'g1-shadow'])
+    expect(derivations).toBe(1)
+  })
+})

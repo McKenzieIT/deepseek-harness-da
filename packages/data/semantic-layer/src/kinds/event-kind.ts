@@ -8,12 +8,21 @@
 import { EventDefinitionSchema, type EventDefinition } from '../types.ts'
 import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem, GraphNodeProjection } from '../registry.ts'
 import { isPlainObject } from '../corpus.ts'
+import { deriveMetricRelations, extractMetricsFromEvent, metricGraphNode, projectMetricCorpusItem } from '../metrics.ts'
 
 /** eventKindPlugin */
 export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
   kind: 'event',
   schema: EventDefinitionSchema,
   storageDir: 'events',
+
+  // An event's inline `metrics:` block derives one virtual `metric` node each.
+  derivedNodes: {
+    derive: extractMetricsFromEvent,
+    toGraphNode: metricGraphNode,
+    relations: deriveMetricRelations,
+    toCorpusItem: projectMetricCorpusItem,
+  },
 
   getId(raw) {
     return typeof raw.name === 'string' ? raw.name : undefined

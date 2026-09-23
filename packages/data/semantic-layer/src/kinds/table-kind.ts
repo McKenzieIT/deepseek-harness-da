@@ -7,11 +7,20 @@
  */
 import { TableDefinitionSchema, type TableDefinition } from '../types.ts'
 import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem, GraphNodeProjection } from '../registry.ts'
+import { deriveMetricRelations, extractMetricsFromTable, metricGraphNode, projectMetricCorpusItem } from '../metrics.ts'
 /** tableKindPlugin */
 export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
   kind: 'table',
   schema: TableDefinitionSchema,
   storageDir: 'tables',
+
+  // A table's inline `metrics:` block derives one virtual `metric` node each.
+  derivedNodes: {
+    derive: extractMetricsFromTable,
+    toGraphNode: metricGraphNode,
+    relations: deriveMetricRelations,
+    toCorpusItem: projectMetricCorpusItem,
+  },
 
   getId(raw) {
     return typeof raw.table_name === 'string' ? raw.table_name : undefined

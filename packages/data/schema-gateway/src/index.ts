@@ -243,17 +243,19 @@ export class SchemaGateway extends TypertRemoteService {
   /**
    * W10/W27: Get graph data for the semantic-graph view. Nodes come from the
    * Semantic Layer's registry-driven projection (`ctx.schema.projectGraphNodes`
-   * — one contribution per registered kind plus the derived-metric contributor,
-   * so `concept` and any kind registered later enter the graph without a
+   * — one contribution per registered kind, plus whatever nodes those kinds
+   * derive, so `concept` and any kind registered later enter the graph without a
    * gateway change); edges come from the RelationGraph. Node/relation `kind` is
    * OPEN (`string`); node ids are branded `SemanticGraphNodeId` at this Remote
    * boundary. Supports domain filtering, focus with BFS depth, and optional
    * metric inclusion.
    *
-   * `includeMetrics` (default false) drops `metric`-kind nodes; every other
-   * projected kind is always included. The internal working sets use plain
-   * string ids (matching the projection + RelationGraph); ids are branded only
-   * when constructing the returned nodes/edges.
+   * `includeMetrics` (default false) leaves derived nodes out of the projection
+   * entirely — `metric` is the only derived kind the built-in kinds contribute,
+   * and skipping it also skips deriving it. Every stored kind is always
+   * included. The internal working sets use plain string ids (matching the
+   * projection + RelationGraph); ids are branded only when constructing the
+   * returned nodes/edges.
    *
    * evalPassRate is left undefined in this base projection — it will be wired
    * from the evidence-query service in a follow-up.
@@ -273,12 +275,13 @@ export class SchemaGateway extends TypertRemoteService {
     const depth = opts?.depth
     const includeMetrics = opts?.includeMetrics ?? false
 
-    // Registry-driven node projection (no hand-written per-kind loops). Metric
-    // nodes are gated by includeMetrics; the domain filter applies to all kinds.
+    // Registry-driven node projection (no hand-written per-kind loops). The
+    // flag reaches the projection instead of filtering its result, so a request
+    // that discards derived nodes never pays for deriving them; the domain
+    // filter applies to all kinds.
     const allNodes: SemanticGraphNode[] = []
     const nodeIdSet = new Set<string>()
-    for (const proj of this.ctx.schema.projectGraphNodes()) {
-      if (!includeMetrics && proj.kind === 'metric') continue
+    for (const proj of this.ctx.schema.projectGraphNodes({ includeDerived: includeMetrics })) {
       if (domain && !proj.domains.includes(domain)) continue
       allNodes.push({
         id: brandString<SemanticGraphNodeId>(proj.id),

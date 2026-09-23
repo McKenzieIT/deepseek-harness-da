@@ -66,7 +66,7 @@ import { eventKindPlugin } from './kinds/event-kind.ts'
 import { tableKindPlugin } from './kinds/table-kind.ts'
 import { conceptKindPlugin } from './kinds/concept-kind.ts'
 import { RelationGraph, type NodeAliasData } from './relation-graph.ts'
-import { projectMetricCorpusItem, deriveMetricRelations, toMetricDefinition, splitMetricName, extractMetricsFromTable, extractMetricsFromEvent, projectMetricGraphNodes } from './metrics.ts'
+import { toMetricDefinition, splitMetricName } from './metrics.ts'
 import { loadEvents, loadTables, loadConcepts, loadRawDir, loadConceptDefinition as loadConceptDefinitionFromLayer } from './io.ts'
 import { EventDefinitionSchema, TableDefinitionSchema, ConceptDefinitionSchema } from './types.ts'
 import { DefinitionSnapshot, captureSnapshot } from './snapshot.ts'
@@ -152,7 +152,7 @@ export {
   splitMetricName,
   inferAggregation,
   loadMetricDefinitions,
-  projectMetricGraphNodes,
+  metricGraphNode,
 } from './metrics.ts'
 // W27: data-source kind registry contract (kinds, relations, graph projection).
 export {
@@ -499,75 +499,60 @@ export class SemanticLayerService extends Service {
     const g = new RelationGraph()
     const entries: { sourceId: string; relations: import('./registry.ts').RelationDef[] }[] = []
     const aliasData: NodeAliasData[] = []
-    const assetDomains: { sourceId: string; domains: string[] }[] = []
-    const conceptNames = new Set<string>()
+    const memberDomains: { sourceId: string; domains: string[] }[] = []
+    const groups = new Map<string, { nodeId: string; memberRelationType: string }>()
 
-    // W27: registry-driven relation + alias + domain collection — no
-    // hand-written per-kind loops. Each registered kind's definitions are
-    // loaded from `root` (scope-aware), and its `plugin.relations()` +
-    // `plugin.toGraphNode()` contribute edges + source ids. A kind
-    // registered after build reaches the graph without a gateway change.
-    // Metric nodes (virtual, not a registered kind) + concept→asset domain
-    // derivation are cross-cutting passes layered after the registry loop.
+    // W27: registry-driven relation + alias + group collection. Each registered
+    // kind's definitions are loaded from `root` (scope-aware); its
+    // `relations()`, `toGraphNode()`, and declared `derivedNodes` contribute
+    // every edge and source id. Nothing here reads a kind string, so a kind
+    // registered after build reaches the graph — including with derived nodes
+    // and as a taxonomy group — without editing this loop.
     for (const plugin of this.registry.allPlugins()) {
-      const isTable = plugin.kind === 'table'
-      const isEvent = plugin.kind === 'event'
+      const grouping = plugin.grouping
+      const derived = plugin.derivedNodes
       for (const def of this.loadKindDefinitions(plugin, root)) {
         const node = plugin.toGraphNode(def)
         if (node) {
           entries.push({ sourceId: node.id, relations: plugin.relations(def) })
-          // CL-2: collect asset domains for the concept→asset derivation.
-          // Concept nodes carry their own name as a domain (for domain
-          // filtering); including them here would create concept→concept
-          // self-loops. Only asset kinds (table/event/…) contribute.
-          if (plugin.kind !== 'concept' && node.domains.length > 0) {
-            assetDomains.push({ sourceId: node.id, domains: [...node.domains] })
+          if (grouping === undefined) {
+            // An ordinary node joins the groups its `domains` name.
+            if (node.domains.length > 0) memberDomains.push({ sourceId: node.id, domains: [...node.domains] })
+          } else {
+            // A grouping node's `domains` carry its own group name, so it
+            // defines a group instead of joining one (no self-loop).
+            groups.set(grouping.groupName(node), { nodeId: node.id, memberRelationType: grouping.memberRelationType })
           }
-          // CL-2: concept node ids are `concept:<name>` — track the bare name
-          // for domain-ref validation + concept→asset edge derivation.
-          if (plugin.kind === 'concept') conceptNames.add(stripConceptPrefix(node.id))
         }
         // Alias index (structural: pref_label / alt_labels on any kind).
         const alias = graphAliasData(def, node?.id)
         if (alias) aliasData.push(alias)
-        // Metric extraction (virtual derived nodes — table/event only).
-        if (isTable) {
-          for (const m of extractMetricsFromTable(def as TableDefinition)) {
-            entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
-            const mAlias = graphAliasData(m, m.name)
-            if (mAlias) aliasData.push(mAlias)
-          }
-        } else if (isEvent) {
-          for (const m of extractMetricsFromEvent(def as EventDefinition)) {
-            entries.push({ sourceId: m.name, relations: deriveMetricRelations(m) })
-            const mAlias = graphAliasData(m, m.name)
-            if (mAlias) aliasData.push(mAlias)
-          }
+        if (derived === undefined) continue
+        for (const virtual of derived.derive(def)) {
+          const virtualNode = derived.toGraphNode(virtual)
+          if (virtualNode === null) continue
+          entries.push({ sourceId: virtualNode.id, relations: derived.relations(virtual) })
+          const virtualAlias = graphAliasData(virtual, virtualNode.id)
+          if (virtualAlias) aliasData.push(virtualAlias)
         }
       }
     }
 
-    // CL-2 D2: validate asset.domains reference existing concepts. A dangling
-    // ref (no matching concept) is SKIPPED + warned rather than aborting the
-    // whole graph build, so valid assets still get their edges. Collected refs
-    // are exposed via getDanglingDomainRefs() (health-check surface).
+    // CL-2 D2: a domain naming no group is SKIPPED + warned rather than
+    // aborting the whole build, so valid members still get their edges.
+    // Collected refs are exposed via getDanglingDomainRefs() (health surface).
     this.danglingDomainRefs = []
-    if (conceptNames.size > 0) {
-      for (const { sourceId, domains } of assetDomains) {
+    if (groups.size > 0) {
+      for (const { sourceId, domains } of memberDomains) {
         for (const d of domains) {
-          if (!conceptNames.has(d)) {
+          const group = groups.get(d)
+          if (group === undefined) {
             const ref = `asset="${sourceId}" domain="${d}"`
             this.danglingDomainRefs.push(ref)
             this.ctx.logger.warn(`ctx.schema relation graph: dangling domain reference — ${ref} (no matching concept definition in concepts/; reference skipped)`)
+            continue
           }
-        }
-      }
-      // Derive concept→asset related_to edges from asset.domains (second pass).
-      // Dangling domains are skipped (warned above) — only valid concepts get edges.
-      for (const { sourceId, domains } of assetDomains) {
-        for (const d of domains) {
-          if (!conceptNames.has(d)) continue
-          entries.push({ sourceId: `concept:${d}`, relations: [{ type: 'related_to', target: sourceId }] })
+          entries.push({ sourceId: group.nodeId, relations: [{ type: group.memberRelationType, target: sourceId }] })
         }
       }
     }
@@ -610,16 +595,14 @@ export class SemanticLayerService extends Service {
   loadRetrievalCorpusAll(): CorpusItem[] {
     const out: CorpusItem[] = []
     for (const plugin of this.registry.allPlugins()) {
+      const derived = plugin.derivedNodes
       for (const def of this.loadKindDefinitions(plugin)) {
         const item = plugin.toCorpusItem(def)
         if (item) out.push(item)
-        const metrics = plugin.kind === 'table'
-          ? extractMetricsFromTable(def as TableDefinition)
-          : plugin.kind === 'event'
-            ? extractMetricsFromEvent(def as EventDefinition)
-            : []
-        for (const m of metrics) {
-          out.push(projectMetricCorpusItem(m))
+        if (derived === undefined) continue
+        for (const virtual of derived.derive(def)) {
+          const virtualItem = derived.toCorpusItem(virtual)
+          if (virtualItem) out.push(virtualItem)
         }
       }
     }
@@ -663,25 +646,37 @@ export class SemanticLayerService extends Service {
 
   /**
    * Registry-driven semantic-graph node projection (W27): every registered
-   * kind's `toGraphNode` applied to each of its loaded definitions, plus the
-   * single derived-metric contributor. Each kind contributes a node or
-   * explicitly declines (`null`); `metric` is virtual (not a registered kind),
-   * so its nodes come from {@link projectMetricGraphNodes}. Reads the ACTIVE
-   * scope root — the Schema Gateway threads a per-request `scopeId` only to the
-   * relation-graph edge source, matching the pre-W27 node-load behavior.
-   * Iterating the registry (not hand-written per-kind loops) is what lets a
-   * kind registered later reach the graph without editing the projection.
-   * @returns one projection per graph node (registered-kind assets + derived metrics).
+   * kind's `toGraphNode` applied to each of its loaded definitions, followed by
+   * the nodes those kinds derive through their declared `derivedNodes`
+   * contributor (`metric` for `table` and `event`). Each kind contributes a node
+   * or explicitly declines (`null`). Iterating the registry, rather than
+   * hand-written per-kind loops, is what lets a kind registered later reach the
+   * graph — with derived nodes included — without editing the projection.
+   *
+   * Uncached: it re-reads every registered kind's definitions from the ACTIVE
+   * scope root on each call. The Schema Gateway threads a per-request `scopeId`
+   * only to the relation-graph edge source, matching pre-W27 node-load behavior.
+   * @param opts - `includeDerived` (default `true`) projects each kind's derived
+   *  nodes; pass `false` to skip deriving nodes the caller discards.
+   * @returns one projection per graph node: every registered kind's own nodes, then their derived nodes.
    */
-  projectGraphNodes(): GraphNodeProjection[] {
+  projectGraphNodes(opts: { readonly includeDerived?: boolean } = {}): GraphNodeProjection[] {
+    const includeDerived = opts.includeDerived ?? true
     const out: GraphNodeProjection[] = []
+    const derivedOut: GraphNodeProjection[] = []
     for (const plugin of this.registry.allPlugins()) {
+      const derived = includeDerived ? plugin.derivedNodes : undefined
       for (const def of this.loadKindDefinitions(plugin)) {
         const node = plugin.toGraphNode(def)
         if (node) out.push(node)
+        if (derived === undefined) continue
+        for (const virtual of derived.derive(def)) {
+          const virtualNode = derived.toGraphNode(virtual)
+          if (virtualNode !== null) derivedOut.push(virtualNode)
+        }
       }
     }
-    out.push(...projectMetricGraphNodes(this.semanticRoot))
+    out.push(...derivedOut)
     return out
   }
 
@@ -1235,17 +1230,6 @@ export interface TextLlm {
  */
 export function wireEnrichmentLlm(schema: { setLlmCall(fn?: (prompt: string) => Promise<string>): void }, llm: TextLlm): void {
   schema.setLlmCall(prompt => llm.text(prompt))
-}
-
-/**
- * Strip the `concept:` prefix from a concept node id to recover the bare
- * concept name (used by `buildGraph` for domain-ref validation + edge
- * derivation). A non-prefixed id passes through unchanged.
- * @param id - the concept node id (`concept:<name>` or a bare name).
- * @returns the bare concept name.
- */
-function stripConceptPrefix(id: string): string {
-  return id.startsWith('concept:') ? id.slice('concept:'.length) : id
 }
 
 /**

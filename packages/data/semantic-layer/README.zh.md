@@ -71,7 +71,14 @@ P13b 的本地 `CriticGuardData`（params_fields/partitions 来自精简 YAML re
 
 ## 图投影与 registry 生命周期 (W27)
 
-语义图投影由 **registry 驱动**：`projectGraphNodes()` 迭代每个已注册 kind 的 `toGraphNode(def)`——无手写三组平行循环——因此构建后注册的 kind 无需修改网关即可进入图。`buildGraph(root)` 以同样方式收集关系（迭代 registry）。kind 必须把 `RelationDef.target` 声明为目标 kind 在 `toGraphNode` 中铸造的规范节点 id，含前缀（`chart:first`，而非 `first`）：构建过程原样存储 target，因为两个 kind 可能持有同名节点，把裸名映射到带前缀 id 会静默把边路由到错误节点。target 未命中任何已投影节点时不产生边。concept→asset domain 派生是 registry 循环之后的横切步骤。
+语义图投影由 **registry 驱动**：`projectGraphNodes()` 迭代每个已注册 kind 的 `toGraphNode(def)`——无手写三组平行循环——因此构建后注册的 kind 无需修改网关即可进入图。`buildGraph(root)` 以同样方式收集关系（迭代 registry）。kind 必须把 `RelationDef.target` 声明为目标 kind 在 `toGraphNode` 中铸造的规范节点 id，含前缀（`chart:first`，而非 `first`）：构建过程原样存储 target，因为两个 kind 可能持有同名节点，把裸名映射到带前缀 id 会静默把边路由到错误节点。target 未命中任何已投影节点时不产生边。
+
+**声明式能力，而非 kind 字符串。** `DataSourceKindPlugin` 的两个可选字段承载了投影本来会硬编码为 `plugin.kind === 'table' | 'event' | 'concept'` 的判断，因此构建后注册的 kind 拥有与内置 kind 完全相同的触达范围：
+
+- `derivedNodes`——一个 kind 从自身每条定义派生出的虚拟定义（`derive` / `toGraphNode` / `relations` / `toCorpusItem`）。`metric` 是已发布的用例：`table` 与 `event` 各自为内联 `metrics:` 的每一项派生一个 metric，这些 metric 仅通过该 contributor 进入节点投影、图边、别名索引与检索 corpus。
+- `grouping`——声明本 kind 的节点为分类组，其他 kind 通过在 `GraphNodeProjection.domains` 中写出组名加入。`concept` 是已发布的用例：构建过程为每个解析成功的组名派生一条 `group → member` 边（concept 为 `related_to`），对未解析的组名跳过并通过 `getDanglingDomainRefs()` 报告，且分组节点永不成为自身成员。
+
+`projectGraphNodes({ includeDerived })`（默认 `true`）跳过调用方会丢弃的派生节点。Schema Gateway 传入它自己的 `includeMetrics` 查询字段，因此不需要 metric 的图请求不再为派生付费；又因为派生节点现在来自 registry 循环已加载的定义，投影不再执行第二次完整的 `tables/` + `events/` 扫描。
 
 **Disposer 与缓存失效。** `registry.register(plugin)` 返回幂等 disposer，仅撤销本次贡献。registry 在增删时均触发 `onChange` 监听；`SemanticLayerService` 在构造函数中注册一个监听来失效 `graphCache` + `graphCacheByScope`，因此已销毁 kind 的节点/边不会残留，重新注册的 kind 无需重启即可流过。使用 `ctx.effect(() => registry.register(plugin))` 安装贡献，使其生命周期跟踪所属 fiber。构造函数无条件通过 `ctx.effect` 装配该监听与三个内置 kind：缺少 fiber 生命周期的 context 会在构造时失败，而不是产出一个图缓存永不失效的 service。
 
