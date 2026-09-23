@@ -130,3 +130,29 @@ describe('M1 virtual metric projection', () => {
     expect(metricItems.length).toBeGreaterThan(0)
   })
 })
+
+// ── Fiber-tracked registration (W27) ───────────────────────────────────
+// The constructor's cache-invalidation listener and its three built-in kind
+// registrations are the mechanism that keeps a disposed kind's nodes and edges
+// out of the cached graph. A context without the fiber lifecycle cannot carry
+// either, so construction must fail rather than produce a service whose graph
+// cache is never invalidated; these two tests pin that stance against a
+// reintroduced `typeof ctx.effect === 'function'` fallback.
+describe('W27 fiber-tracked registration', () => {
+  it('withdraws the built-in kinds when the owning fiber disposes', async () => {
+    const ctx = new Context()
+    let service: SemanticLayerService | undefined
+    const fiber = ctx.plugin((inner: Context) => {
+      service = new SemanticLayerService(inner, { semanticRoot: '' })
+    })
+    await fiber
+    expect(service?.getRegistry().allKinds().sort()).toEqual(['concept', 'event', 'table'])
+    await fiber.dispose()
+    expect(service?.getRegistry().allKinds()).toEqual([])
+  })
+
+  it('refuses a context without the fiber lifecycle instead of degrading silently', () => {
+    const partial = { reflect: { provide: () => {} }, get: () => undefined } as unknown as Context
+    expect(() => new SemanticLayerService(partial, { semanticRoot: '' })).toThrow()
+  })
+})

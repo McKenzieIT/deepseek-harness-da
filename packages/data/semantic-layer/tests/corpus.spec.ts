@@ -17,7 +17,7 @@ import {
 } from '../src/corpus.ts'
 import { loadRetrievalCorpus, invalidateCaches, getCorpusVersion } from '../src/io.ts'
 import { SemanticLayerService } from '../src/index.ts'
-import type { Context } from '@deepseek-ai/cordis'
+import { Context } from '@deepseek-ai/cordis'
 
 
 
@@ -161,8 +161,7 @@ test('getCorpusVersion bumps after invalidateCaches(semanticLayer); independent 
 // ── D2f Service corpusVersion() ──
 test('SemanticLayerService.corpusVersion() reflects invalidateCaches(semanticRoot)', () => {
   const layer = '/d2f-svc-version-test'
-  const ctx = { reflect: { provide: () => {} }, get: () => undefined } as unknown as Context
-  const svc = new SemanticLayerService(ctx, { semanticRoot: layer, scopeId: '' })
+  const svc = new SemanticLayerService(new Context(), { semanticRoot: layer, scopeId: '' })
   const before = svc.corpusVersion()
   invalidateCaches(layer)
   expect(svc.corpusVersion()).toBe(before + 1)
@@ -249,13 +248,13 @@ test('SemanticLayerService.loadRetrievalCorpus() honors corpusVariant config', (
   writeFileSync(join(layer, 'events', 'role_public', 'role.online.yaml'), eventYaml)
   writeFileSync(join(layer, 'config.yaml'), 'project:\n  name: demo\n  scope_id: 10000demo\n')
   try {
-    const ctx = { reflect: { provide: () => {} }, get: () => undefined } as unknown as Context
-    const termSvc = new SemanticLayerService(ctx, { semanticRoot: layer, scopeId: '', corpusVariant: 'term-only' })
+    // Separate contexts: each service registers itself as `schema`.
+    const termSvc = new SemanticLayerService(new Context(), { semanticRoot: layer, scopeId: '', corpusVariant: 'term-only' })
     const termCorpus = termSvc.loadRetrievalCorpus()
     expect(termCorpus[0]!.description).toContain('日活')
     expect(termCorpus[0]!.description).not.toContain('角色id')
     expect(termSvc.corpusVariant).toBe('term-only')
-    const defSvc = new SemanticLayerService(ctx, { semanticRoot: layer, scopeId: '' })
+    const defSvc = new SemanticLayerService(new Context(), { semanticRoot: layer, scopeId: '' })
     const defCorpus = defSvc.loadRetrievalCorpus()
     expect(defCorpus[0]!.description).toContain('角色id')
     expect(defSvc.corpusVariant).toBe('params+term')
