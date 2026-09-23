@@ -3,7 +3,7 @@
 **Type**: research
 **Status**: closed
 **Blocked by**: —
-**Blocks**: [G1 DAG data model decision](G1-dag-data-model-decision.md), [G3 preset universality strategy](G3-preset-universality-strategy.md)
+**Blocks**: [G1 DAG data model decision](G1-dag-data-model-decision.md), [G3 Preset-orthogonal Task DAG distribution](G3-preset-universality-strategy.md)
 
 ## Question
 

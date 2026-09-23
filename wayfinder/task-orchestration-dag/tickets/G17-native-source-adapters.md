@@ -1,17 +1,18 @@
 # G17 — Executor adapters
 
 **Type**: grilling
-**Status**: open
-**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
-**Blocks**: [G9 Optional Agent Teams adapter](G9-team-task-upstream-integration.md), [G10 Subagent execution adapter](G10-subagent-tree-upstream-integration.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md)
+**Status**: claimed
+**Assignee**: QoderWork session mucgkb90iwnukhr7
+**Blocked by**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) ✅, [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) ✅, [G7 writeScopes conflict semantics](G7-writescopes-conflict-detection.md) ✅, [G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md) ✅
+**Blocks**: [G9 Optional Agent Teams adapter](G9-team-task-upstream-integration.md), [G10 Subagent execution adapter](G10-subagent-tree-upstream-integration.md), [G18 Community package and bundle topology](G18-community-package-and-bundle-topology.md), [G20 First-release scope, compatibility, and evaluation](G20-v1-scope-and-evaluation.md), [G37 Manual execution adapter](G37-manual-execution-adapter.md)
 
 ## Question
 
-How does an Attempt execute through the current Agent, a skill, subagent, workflow, ordinary tools, manual work, or data-agent phase policy without copying those capabilities' state machines?
+How does an Attempt execute through the current Agent, a skill, subagent, workflow, ordinary tools, manual work, or the data-agent executor without copying those capabilities' state machines?
 
 For each executor, define capability matching, concrete binding, native concurrency, Attempt Group participation, dispatch, causal correlation, cancellation, outcome settlement, named output and evidence mapping, recovery coverage, and missing-data behavior. Skills are execution methods, not Task instances. Native subagent catalogs and workflow events remain authoritative for their internal lifecycle.
 
-Define a typed, versioned executor-adapter contribution registry so future query engines, workflows, subagent providers, and data pipelines join through ordinary Cordis `inject + register + effect`, never driver `if/else` branches. Descriptors declare capacity keys, cancellation/reconciliation/resume support, reserved future Attempt Group support, output/evidence projection, failure classification, retry safety, and compatibility. A missing or incompatible adapter fails loud. The first release keeps phase/inner policy behind its concrete executor adapter rather than publishing a one-provider Attempt-policy seam; G25 may promote a shared interface after a second independently evolving policy exists. No inner policy may become a second outer-loop owner.
+Define a typed, versioned executor-adapter contribution interface so future query engines, workflows, subagent providers, and data pipelines join without driver `if/else` branches. This ticket must decide the smallest Cordis mechanism that satisfies that interface and prove registration ownership, disposal, scoped visibility, and failure behavior through an existing or minimal prototype; it must not assume `inject + register + effect` before that proof. Descriptors declare capacity keys, cancellation/reconciliation/resume support, reserved future Attempt Group support, output/evidence projection, failure classification, retry safety, and compatibility. A missing or incompatible adapter fails loud. The target data-agent adapter runs the ordinary Agent loop with private grounding, query-admission, and evidence-validation contributions. The first release may also wrap the current phase-gate as an opaque compatibility adapter, but no phase identity enters Task DAG contracts and no one-provider Attempt-policy seam is published. No executor-local policy may become a second outer-loop owner or control Task DAG orchestration-tool visibility.
 
 ## Inputs from the G13 resolution
 
@@ -20,3 +21,74 @@ Define a typed, versioned executor-adapter contribution registry so future query
 ## Inputs from the G19 resolution
 
 The data-agent adapter consumes the selected data scope, metric and concept definitions, labels, default caliber, and Ontology relations before reporting ambiguity. It records stable semantic references or definition digests with the Attempt's model-visible input, maps residual ambiguity to a Task-scoped clarification request, maps absent grounding to decline, and never transfers semantic-layer or phase lifecycle ownership into the Task DAG. The adapter also exposes enough structured failure and changed-premise facts for bounded local repair and configured affected-subgraph replan.
+
+[G25 Data-agent inner orchestration after Task DAG](G25-phase-gate-integration.md) fixes two data-agent adapter modes with one external contract. The target mode invokes the ordinary Agent plus split policy and validators. An optional v1 compatibility mode invokes the current phase-gate opaquely and returns the same clarification, output/evidence, decline, failure, and cancellation categories. Adapter selection is deployment configuration; Tasks, Attempts, and consumers do not branch on phase state.
+
+## Inputs from the G14 resolution
+
+Executor adapters implement Host-neutral Task DAG ports. Core `ExecutionBinding` records contain `HostBindingId`, purpose, parentage, generation, and opaque adapter-owned native references rather than DSH identifier unions. Task DAG SQLite commit is the intent durability barrier; current-Agent delivery additionally uses the outbox, source-owned `deliveryId`, Session flush and correlation verification, acknowledgement, and pre-step fencing.
+
+## Inputs from the G7 resolution
+
+Each write-capable executor adapter resolves one complete `read-only | scoped-write | unbounded-write` intent before admission. Scoped resources use versioned `scheme`, `authority`, hierarchical `segments`, and `exact | subtree`; the adapter owns provider normalization, safe labels, actual-target checks, and optional native enforcement. Every adapter consumes the immutable Attempt ExecutionTicket, child Bindings may only narrow its scopes, and unavailable required protection rejects dispatch rather than silently downgrading. The adapter reports `admission-only | target-validated | native-enforced` without changing the core overlap rule.
+
+## Discussion checkpoint
+
+This ticket remains claimed; the full design and shared understanding are not yet confirmed. The [execution glossary](../CONTEXT.md) records settled terms.
+
+```mermaid
+flowchart TD
+    Q1[Confirmed: explicit execution target] --> Q2[Confirmed: Task pins target revision]
+    Q1 --> Q3[Confirmed: visibility filters without identity overrides]
+    Q3 --> R[Open: registration mechanism and adapter compatibility]
+    Q2 --> D[Open: automatic executor coverage and dispatch]
+    R --> D
+    Q4[Confirmed: defer generic manual execution] --> D
+    Q4 --> F[Follow-up: Manual execution adapter]
+    D --> C[Open: native capacity, cancellation, and disposal]
+    D --> O[Open: outputs, evidence, and missing results]
+    C --> V[Open: recovery coverage and cumulative ROI review]
+    O --> V
+    V --> H[Pending: shared-understanding confirmation]
+```
+
+The manual-execution deferral is scoped in [Manual execution adapter](G37-manual-execution-adapter.md). Automatic executor coverage remains open; the deferral does not select which automatic adapters ship.
+
+## Evidence checkpoint
+
+These findings constrain the remaining decisions; they are not a completed adapter design or a first-release support declaration.
+
+### Cordis registration
+
+The existing [adapter registration](../../../packages/llm/llm/src/index.ts), [scope storage](../../../packages/core/scope/src/store.ts), [scoped tool tests](../../../packages/core/tools/tests/scoped.spec.ts), and [provider/consumer composition tests](../../../packages/extensions/cordis-host-runner/tests/composition.spec.ts) establish reusable registration and lifetime mechanisms. Scope-layer merging permits nearest-scope shadowing, so using it unchanged would not establish Q3's unique target identities. Missing injected services leave a consumer pending; injection alone does not establish the required missing-target diagnostic. Registration cleanup does not establish cancellation, native quiescence, or Attempt settlement for in-flight work.
+
+The session's focused existing-mechanism run passed seven files and 184 tests:
+
+```sh
+pnpm exec vitest run --configLoader runner --no-cache \
+  packages/extensions/tool-cordis/tests/cordis-lifecycle.spec.ts \
+  packages/extensions/cordis-host-runner/tests/composition.spec.ts \
+  packages/core/tools/tests/scoped.spec.ts \
+  packages/core/scope/tests/store.spec.ts \
+  packages/core/scope/tests/scope.spec.ts \
+  packages/session/session-projection/tests/registry.spec.ts \
+  packages/llm/llm/tests/service.spec.ts
+```
+
+This run does not verify a G17 registry, target revision compatibility, dispatch, cancellation, or recovery implementation. Those combined behaviors still require evidence before this ticket resolves.
+
+### Direct tool execution and native transcript
+
+Source inspection confirms that the public [tool execution API](../../../packages/core/tools/src/index.ts) accepts execution without an Agent and performs policy and guard processing. It does not supply the Agent loop's native Session transcript merely by returning a result or emitting `tools/result`.
+
+The [Session invariant](../../../packages/core/session/src/invariant.ts) requires native `tool/call` and newly appended `tool/result` events to belong to an open turn and step. A normal result requires a matching call in that step; the invariant handles synthetic not-started results separately and rechecks existing history when seeding its state. Public `Session.append` is therefore not evidence that an out-of-turn native transcript is legal. The [Agent loop's call/result writers](../../../packages/core/agent-loop/src/tool-calls.ts) are private helpers and are not an allowed adapter dependency.
+
+The targeted source search did not establish an existing public path for durable, replayable native tool records without an Agent turn. This is a transcript-integration gap, not proof that Host-neutral non-model execution is impossible. Whether a direct-tool root target ships, what durable record it produces, and how its result appears in DSH remain unresolved. Any selected approach must preserve [Task DAG and DSH record ownership](G14-task-graph-projection-boundary.md) without fabricating Agent turns or modifying upstream code.
+
+## Comments
+
+- Q1：用户确认首版采用显式执行目标。规划者从部署提供的目录选择具名目标，Task 不保存 DSH 实现类名或 phase 状态；运行前检查目标的能力、权限和版本，并在准入时固定本次 Attempt 的具体适配器。缺失或不满足条件时明确阻塞，不自动替换执行器。
+- Q1 scope：能力需求匹配与自动选路归入 [Advanced routing, parallelism, and optimization](G24-advanced-routing-and-parallelism.md)。触发条件为多个可替换执行器或跨部署计划复用产生可测的手工映射成本；该后续决定能力描述、候选消歧和选择理由，不改变已准入 Attempt 的固定执行语义。
+- Q2：用户确认 Task 在计划提交时锁定执行目标的行为定义修订，启动前验证该修订仍可用且满足要求；目标修订不可用则阻塞，并按已有 Plan 变更权限显式更新 Task，不自动采用现行修订。不要求保留历史插件或建设自动迁移系统；未改变目标行为定义的兼容性修复不必生成新的目标修订。目标修订与 npm 包版本、凭证轮换分离。
+- Q3：用户确认同一执行目录内的目标标识不得隐式覆盖。作用域只过滤可见性；局部插件不能用同一个稳定标识替换另一目标，重复注册明确失败。显示名称不作为身份；目标可见性不授予执行权限，仍须通过 Task DAG 准入与命令权限检查。
+- Q4：用户确认首版延期通用人工执行器，聚焦自动执行目标；已有审批、澄清和外部副作用不确定时的人工核对仍保留。人员领取工作、到平台外操作、提交结果及确认取消归入 [Manual execution adapter](G37-manual-execution-adapter.md)，仅在真实流程反复依赖平台外人工操作时启动后续决策，不因接口可扩展而提前实现。

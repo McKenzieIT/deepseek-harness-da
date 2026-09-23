@@ -16,3 +16,7 @@ Define principal and actor identity, command capability vocabulary, resource sco
 ## Inputs from the G13 resolution
 
 The first release uses a closed Host-enforced command matrix for `user`, `orchestrator`, `worker`, `executor-adapter`, `verifier`, and `driver`; roles are per-command context, identifiers and `ExecutionTicket` values are not credentials, and unknown actors or commands fail closed. Every retryable or cross-process command has a `TaskGraphCommandId`; replaying the same payload is idempotent, while reusing the identifier with different content fails. This ticket must preserve those defaults and is triggered only by a second independently evolving authorization model, not by another implementation of an existing worker, adapter, or verifier role.
+
+## Inputs from the G7 resolution
+
+The closed first-release actor matrix controls any human resolution of quarantined write reservations. A resolution records actor, reason, evidence, affected ExternalEffects, and resulting certainty; it never deletes unknown history or marks the Task successful. This ticket owns extensible operator or delegated-admin authority only after a second independently evolving permission model appears, and must not introduce a generic unaudited force-unlock capability.

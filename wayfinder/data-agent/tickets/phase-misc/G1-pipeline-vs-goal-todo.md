@@ -3,6 +3,7 @@
 **Type**: grilling
 **Phase**: 3+
 **Status**: Resolved (2026-08-20) — 实验设计(不跑)定稿；执行毕业 **G1b**（P7b-blocked；P11 已 resolved、生产级须 P11b）
+**Current standing**: 本票只确定 A/B/C/D 实验设计，没有证明 phase-gate 应保留或移除。G1b 完成了模型能力对比并实现 HarnessAgentResponder；原机器仍有未提交的 A/B/D 运行文件，但各组工具目录不一致、外层评分未保留真实查询结果，也没有可审查的 Evidence Cut 或 ship-default verdict。Task DAG 出现后，Goal/Todo planning 轴也不能回答“phase-gate 相对独立校验策略是否仍有增量价值”。该问题由 [G25 Data-agent inner orchestration after Task DAG](../../../task-orchestration-dag/tickets/G25-phase-gate-integration.md) 收敛，并由 [G25a Phase-gate incremental-value experiment](../../../task-orchestration-dag/tickets/G25a-phase-gate-incremental-value-experiment.md) 提供新证据。
 **Assignee**: wayfinder-session 2026-08-20
 
 **Question**: 保留两者，实验对比哪种更好（不同模型可能不同搭配）。

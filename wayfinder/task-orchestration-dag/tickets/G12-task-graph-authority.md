@@ -2,6 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved 2026-09-12
+**Current standing**: the Task Graph, not the structural Plan DAG, owns runtime attempts, verification, Holds, budgets, and stop records. `PlanRunId` is independent of DSH Session identity; [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) stores this authority in a DSH-neutral journal and relates Hosts through generic Host Bindings. This ticket does not select phase-gate: if a data-agent executor retains it, phases remain executor-local rather than Tasks or Task Graph authority.
 **Blocked by**: [R6 Agent orchestration and loop-engineering research](R6-agent-orchestration-and-loop-engineering.md) ✅, [R7 DSH Cordis plugin adaptation](R7-dsh-cordis-plugin-adaptation.md) ✅
 **Blocks**: [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md), [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md), [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
 
@@ -61,4 +62,4 @@ The Plan DAG is the single writable authority for one Session's Plan Runs, Tasks
 - [G13 ExecutionAttempt and correlation protocol](G13-task-work-correlation.md) defines identifiers, causal bindings, admission, grouping, and settlement.
 - [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md) defines scheduling, actor policy, verifier dispatch, budgets, continuation, and stop behavior without modifying `agent-loop`.
 - [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) defines required events and projections for these entities and revisions.
-- Full-version follow-ups cover advanced verification, multi-agent scheduling, recovery, routing, phase and Goal integration, capability extraction, history inspection, typed ports, richer Plan relations, and reusable Run control.
+- Full-version follow-ups cover advanced verification, multi-agent scheduling, recovery, routing, data-agent inner orchestration and Goal integration, capability extraction, history inspection, typed ports, richer Plan relations, and reusable Run control.

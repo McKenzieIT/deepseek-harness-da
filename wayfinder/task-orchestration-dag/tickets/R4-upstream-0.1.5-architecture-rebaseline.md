@@ -2,7 +2,7 @@
 
 **Type**: research
 **Status**: resolved 2026-09-12
-**Current standing**: the upstream inventory remains valid; the tentative read-only graph preference is superseded by [R6 Agent orchestration and loop-engineering research](R6-agent-orchestration-and-loop-engineering.md).
+**Current standing**: the upstream capability inventory remains valid as DSH adapter input. [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) supersedes Task Graph authority in DSH Session events or `sessionProjections`; the journal-backed Task DAG core and projection are independent of DSH.
 **Blocked by**: —
 **Blocks**: —
 

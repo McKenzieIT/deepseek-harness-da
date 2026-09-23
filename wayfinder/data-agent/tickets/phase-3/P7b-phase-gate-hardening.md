@@ -3,6 +3,7 @@
 **Type**: prototype
 **Phase**: 3
 **Status**: **Resolved (re-open closed 2026-08-20)**（2026-08-20, wayfinder-session re-open）。Was Resolved @ `da20cd5268`（shipped phase-gate 包 + P13 critic fold + F1-F6 + 16/16 scenario），但**非 functional**：code review（subagent `aa744f6e74e81b1db`）+ map follow-up（Not-yet-specified 末行「critic dedup P13b/P7b 并发产物」）surfaced B1/B2 CRITICAL（GENERATION gate 恒 fail + persona C 恒 UNDERSTANDING）+ critic 与 P13b nl2sql-engine 并发重复 → 同 session 一起修。原 was Unblocked（P13 resolved 2026-08-20——GENERATION critic 形态=方案 1 薄 regex + 方案 4 轻量 JSON path，node-sql-parser 不引；P7 sqlglot stub 已替换为真 critic）。
+**Current standing**: 本票证明现有 phase-gate 实现能够按既定四阶段协议运行，不证明 Task DAG 引入后仍应保留该状态机。其长期保留、拆分或退役由 task-orchestration-dag G25 决定。
 **Assignee**: wayfinder-session 2026-08-20 (re-open)
 
 ## Surfaced (re-open 2026-08-20)

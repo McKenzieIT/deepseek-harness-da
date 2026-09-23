@@ -2,6 +2,7 @@
 
 **Type**: grilling
 **Status**: resolved 2026-09-15
+**Current standing**: causal Binding ownership, command idempotency, revision fencing, outputs/evidence separation, cancellation, and late-result isolation remain authoritative. [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md) replaces required DSH Session events and Session-flush Task durability with TaskGraph journal commits, command receipts, transactional outbox delivery, generic Host Bindings, and adapter-owned native references; DSH flush applies only to the correlated model/tool transcript leg.
 **Blocked by**: [G12 Plan DAG ownership boundary](G12-task-graph-authority.md) ✅
 **Blocks**: [G14 Durable events, projection, and Host/Client boundary](G14-task-graph-projection-boundary.md), [G17 Executor adapters](G17-native-source-adapters.md), [G19 Cordis outer-loop driver](G19-cordis-outer-loop-driver.md)
 

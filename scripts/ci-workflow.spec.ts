@@ -662,6 +662,15 @@ describe('Runtime and LLM e2e Blacksmith routing', () => {
   })
 })
 
+describe('Bubblewrap CI payload', () => {
+  it('pins the current Noble security payload and checksum', () => {
+    const script = readFileSync(resolve(root, 'scripts/prepare-ci-bubblewrap.sh'), 'utf8')
+    expect(script).toContain("BUBBLEWRAP_VERSION='0.9.0-1ubuntu0.3'")
+    expect(script).toContain("BUBBLEWRAP_SHA256='2461f1beee9cb04c8942739fe1a2b37e7b7c2a3d518f0779dc75f9245baa3094'")
+    expect(script).toContain('https://security.ubuntu.com/ubuntu/pool/main/b/bubblewrap/')
+  })
+})
+
 describe('DeepSeek e2e workflow', () => {
   it('prepares bubblewrap from the pinned payload without a package transaction', () => {
     const workflow = loadWorkflow('.github/workflows/e2e.yml')
