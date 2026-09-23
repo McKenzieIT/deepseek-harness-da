@@ -295,7 +295,7 @@ describe('skipping derived nodes the caller discards (I4)', () => {
     svc.getRegistry().register({
       ...fixtureKind({ kind: 'gizmo', storageDir: 'gizmos', idPrefix: 'gizmo:' }),
       derivedNodes: {
-        derive: (def) => { derivations++; return [{ id: `${def.name}-shadow` }] },
+        derive: (def: NamedDefinition) => { derivations++; return [{ id: `${def.name}-shadow` }] },
         toGraphNode: (shadow: { id: string }) => ({ id: shadow.id, kind: 'shadow', label: shadow.id, domains: [] }),
         relations: () => [],
         toCorpusItem: () => null,

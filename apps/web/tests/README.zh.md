@@ -20,4 +20,6 @@ import 一个 Client 包——无论值还是类型——都会把它整个 Type
 
 built-client harness 是例外。`assembled-boot.ts` import `AppWebEntry`、boot manifest（元数据清单）类型与 `RemoteMock`；`assembled-remote.ts` import Client test runtime 的默认响应与 `RemoteMock`。这些包是显式的工程引用，用于通过测试持有的 carrier 启动真实 shell。chat 场景仍在 `support.ts` 中镜像 `conversationContextKey`，而不 import 其 Client owner。
 
+Remote 往返是另一个例外，而它完全不 import Client face。`semantic-graph-remote.e2e.ts` 让真实 Host 通过 Connection Fetch carrier 应答 Client 的 `ctx.remote` 调用，因此两侧必须在同一进程内。它通过编译器无法跟踪的**运行时** specifier 加载 Client face 与生成的 codec，并在本地镜像它们的类型。运行时解析仍走同一套 tsconfig paths，因此两侧共享同一份 Cordis 拷贝，而 Host 构建图不会被拉入 Client 工程。
+
 没有任何机制强制这条规则；靠 review 守住它。

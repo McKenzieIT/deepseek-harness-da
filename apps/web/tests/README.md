@@ -20,4 +20,6 @@ When a scenario needs a Client-owned constant or pure function, mirror it here i
 
 The built-client harness is the exception. `assembled-boot.ts` imports `AppWebEntry`, the boot-manifest type, and `RemoteMock`; `assembled-remote.ts` imports the Client test runtime's default responses and `RemoteMock`. These packages are explicit project references for booting the real shell against a test-owned carrier. The chat scenarios mirror `conversationContextKey` in `support.ts` instead of importing its Client owner.
 
+A Remote round trip is the other exception, and it does not import a Client face at all. `semantic-graph-remote.e2e.ts` answers a Client `ctx.remote` call from a real Host over the Connection Fetch carrier, so it needs both halves in one process. It loads the Client faces and the generated codecs through **runtime** specifiers the compiler cannot follow, and mirrors their types locally. Runtime resolution still uses the same tsconfig paths, so both halves share one Cordis copy while the Host build graph stays clear of the Client project.
+
 Nothing mechanically enforces this rule; keep it in review.
