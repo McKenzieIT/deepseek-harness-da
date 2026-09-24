@@ -107,3 +107,20 @@ The web app boots keyless with the `semantic-layer-management` preset active. Op
 
 - Spec review: the `RelationDef.type` opening + canonical target mapping + `onChange` cache invalidation are the load-bearing changes; review `registry.ts`, `relation-graph.ts`, `index.ts` (buildGraph + constructor guard), `graph-remote.spec.ts` (new host-side test).
 - Standards review: the `graph-remote.spec.ts` is a host-side test (neutral `.spec.ts` suffix — fits `tsconfig.host.json`, no `/client` imports, no TS6307). The `ctx.effect` guard uses a runtime `typeof` check (not a type assertion) so the real Cordis Context path is unchanged.
+
+## Answer 补遗（2026-09-24，独立 review 修复收口）
+
+PR #185 merge 前由协调 Session 跑独立 review（实现 agent 不自审），结论 NEEDS WORK，全部 Important 在 merge 前修完：
+
+- **C1（关键，已复现并修复）**：`buildGraph` 的 canonical target 解析原为单遍 `targetMap`，注释声称"精确 id 永远优先"但未实现——多 kind 场景下边会被静默指向错误 kind 的节点。改为**要求 plugin 发出 canonical target**，删除 bare-name 强制映射（C1 的更优解，heuristic 关系身份本属 G8 范围）。
+- **I2**：原 `graph-remote.client.spec.ts` 被删后 Remote 装配覆盖净丢失，且 ticket 用"apps/web e2e 覆盖"正当化的说法不成立。新增 `apps/web/tests/semantic-graph-remote.e2e.ts`：keyless 全栈 Remote 往返，经真实生成 codec + transport 断言 table/event/metric/concept + 一个开放测试 kind 到达客户端。
+- **I3**：`ctx.effect` guard 是向坏 test fake 妥协的生产代码，else 分支静默丢缓存失效。改为无条件 `ctx.effect`，并把 `corpus.spec.ts` 的 fake context 改为真 `new Context()`。
+- **I4**：`projectGraphNodes` 每次 `getGraphData` 双扫全层且丢弃 metric。改为按 `includeMetrics` 门控。
+- **I6/I7**：把硬编码 `plugin.kind === 'table'/'event'/'concept'` 分支改为 plugin capability hook（derived-node contributor + grouping flag）；`loadKindDefinitions` 按 plugin identity 而非 `storageDir` 字符串分派。
+- **I5**：presentation registry 补齐 node + relation kind 的 label/icon/style/detail renderer，未知 kind 通用 fallback 保留可访问 label；从 client index 导出。
+- **I8**：12 处 client import 改走 `@deepseek-ai/dsh-schema-gateway/types` 子路径而非根入口。
+- **inspect-catalog 崩溃修复**：`ui-context-layer` index 原 `export type { SemanticGraphData as GraphData, ... } from '.../types'` 命名跨面 re-export 触发 analyzer 在 client batch 内无法验证 gateway host 源文件 → `getExportsOfModule(undefined)` 崩溃。该 re-export 无外部消费者（本包是自注册 plugin），删除之，零行为变化。`api-remotes` 用空 `export type {}` 规避同一问题。
+
+验证：532 测试通过（含 W26 management-context）；typecheck 0 error；doc-sync 43/43；CI `node 24 / static` 绿（含 cordis catalog + inspect catalog）。剩余 CI 红全为 `prepare-ci-bubblewrap.sh` curl 404 基础设施问题（master 同红，归 PR #183 / Repo Infra T29），非 W27。
+
+**GIF**：按 `.agents/skills/record-browser-gif` 规则，改 GUI 的 PR 应附演示 GIF。本票 concept 到达客户端的主张已由 keyless e2e 机器验证（比 GIF 更强）；GIF 作为可视化演示 deferred，从真实 server 录制为后续项。未假装已完成。
