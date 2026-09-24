@@ -9,8 +9,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type {} from '@deepseek-ai/dsh-schema-gateway/remote'
-import type { TypertRemoteNamespaceMap } from '@deepseek-ai/dsh-typert-protocol'
+import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+import type { SemanticGraphData, SemanticGraphQuery } from '@deepseek-ai/dsh-schema-gateway/types'
 import { ContextLayerService, type IContextLayer } from './service.ts'
 import { ContextLayerOverlay } from './ContextLayerOverlay.tsx'
 import { buildGraphDataClient } from './graphDataBridge.ts'
@@ -22,12 +22,15 @@ export {
   type ContextLayerGraphProps,
 } from './ContextLayerGraph.tsx'
 
-export type {
-  SemanticGraphData as GraphData,
-  SemanticGraphNode as GraphNode,
-  SemanticGraphEdge as GraphEdge,
-  SemanticGraphQuery as GraphDataOpts,
-} from '@deepseek-ai/dsh-schema-gateway/types'
+// The Graph RPC types live on the Schema Gateway package and are imported
+// directly from `@deepseek-ai/dsh-schema-gateway/types` by every file that
+// needs them. They are not re-exported here: a named cross-face re-export from
+// this client package would force the Cordis inspect catalog to verify each
+// name against the gateway's `./types` subpath from within the client analysis
+// batch, which cannot see the gateway's host source files. An empty
+// `export type {}` (as `api-remotes` uses) avoids that, but carries no value
+// when no external consumer imports these aliases from this package — and none
+// does (this package is a self-registering Cordis plugin, not an import target).
 
 export {
   getZoomLevel,
@@ -163,8 +166,16 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.reflect.provide('contextLayer', service), 'ui-context-layer: service')
 
   ctx.inject(['remote'], (scope: Context) => {
-    const remote = (scope as unknown as { remote?: TypertRemoteNamespaceMap }).remote
-    const schemaGateway = remote?.schemaGateway as Pick<TypertRemoteNamespaceMap['schemaGateway'], 'getGraphData'> | undefined
+    type SchemaGatewayRemote = {
+      getGraphData: (
+        opts?: SemanticGraphQuery,
+        scopeId?: string,
+      ) => Promise<RemoteResult<SemanticGraphData>>
+    }
+    const remote = (scope as unknown as {
+      remote?: { schemaGateway?: SchemaGatewayRemote }
+    }).remote
+    const schemaGateway = remote?.schemaGateway
     const graphClient = schemaGateway
       ? buildGraphDataClient(schemaGateway)
       : null
