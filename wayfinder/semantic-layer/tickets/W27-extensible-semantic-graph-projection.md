@@ -40,6 +40,8 @@ blocked_by: []
 
 ## Answer（2026-09-23）
 
+> **阅读指引**：本 Answer 含两段。下方为 rework agent 的 pre-merge 记录（W26 未 merge、SHA `6bf5439abb` 时写就，部分状态已过时）。最终交付以文末 [## Answer 补遗（2026-09-24）](#answer-补遗2026-09-24独立-review-修复收口) 为准——它记录独立 review 的 C1/I2/I3/I4/I5/I6/I7/I8 修复、inspect-catalog 崩溃修复、merge-forward 与最终 merge 状态。
+
 **Rework by rework agent** — the prior W27 agent fixed defects 1-5 (94 tests pass) but left the branch non-mergeable: `graph-remote.client.spec.ts` caused TS6307 in BOTH host and client typecheck programs (imports both host and client faces), `corpus.spec.ts` regressed (2 tests fail because the constructor calls `ctx.effect` on a fake context that lacks it), and the prior agent ran a narrow test set that missed the corpus regression. All three fixed; full test set green; typecheck clean; doc-sync clean; pushed clean (no `--no-verify`).
 
 ### Problem 1 — `graph-remote.client.spec.ts` TS6307 (FIXED)
@@ -120,6 +122,8 @@ PR #185 merge 前由协调 Session 跑独立 review（实现 agent 不自审）�
 - **I5**：presentation registry 补齐 node + relation kind 的 label/icon/style/detail renderer，未知 kind 通用 fallback 保留可访问 label；从 client index 导出。
 - **I8**：12 处 client import 改走 `@deepseek-ai/dsh-schema-gateway/types` 子路径而非根入口。
 - **inspect-catalog 崩溃修复**：`ui-context-layer` index 原 `export type { SemanticGraphData as GraphData, ... } from '.../types'` 命名跨面 re-export 触发 analyzer 在 client batch 内无法验证 gateway host 源文件 → `getExportsOfModule(undefined)` 崩溃。该 re-export 无外部消费者（本包是自注册 plugin），删除之，零行为变化。`api-remotes` 用空 `export type {}` 规避同一问题。
+
+  **Follow-up（非本票范围）**：`packages/typert/generator/src/analyzer.ts` 的 `packageExportName` 用 `as ts.SourceFile` / `as ts.Symbol` 非空断言后直接 `getExportsOfModule`，当 cross-face re-export 的目标源文件不在当前 batch 的 `sourceFiles` map 时崩溃（无 null guard）。W27 靠删除未用 re-export 规避；潜在 bug 仍在，归 typert-generator / repo-infra owner，不在 semantic-layer 本票内修。
 
 验证：532 测试通过（含 W26 management-context）；typecheck 0 error；doc-sync 43/43；CI `node 24 / static` 绿（含 cordis catalog + inspect catalog）。剩余 CI 红全为 `prepare-ci-bubblewrap.sh` curl 404 基础设施问题（master 同红，归 PR #183 / Repo Infra T29），非 W27。
 
