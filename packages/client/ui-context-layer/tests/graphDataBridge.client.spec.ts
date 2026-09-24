@@ -16,10 +16,16 @@ describe('buildGraphDataClient', () => {
     expect(remote.getGraphData).toHaveBeenCalledWith({ focus: 'a', depth: 2 }, undefined)
   })
 
-  it('throws on RPC failure', async () => {
-    const remote = { getGraphData: vi.fn().mockResolvedValue({ ok: false, error: 'timeout' }) }
+  // RemoteFailure is a RemoteError (an Error subclass) on the real wire; a test
+  // double may pass a bare string; anything else has no readable detail.
+  it.each([
+    ['an Error failure', new Error('gateway unavailable'), 'getGraphData RPC failed: gateway unavailable'],
+    ['a string failure', 'timeout', 'getGraphData RPC failed: timeout'],
+    ['a detail-less failure', { code: 7 }, 'getGraphData RPC failed: unknown'],
+  ])('throws on RPC failure with %s', async (_label, error, message) => {
+    const remote = { getGraphData: vi.fn().mockResolvedValue({ ok: false, error }) }
     const client = buildGraphDataClient(remote)
-    await expect(client.fetchGraphData()).rejects.toThrow('getGraphData RPC failed: timeout')
+    await expect(client.fetchGraphData()).rejects.toThrow(message)
   })
 
   it('passes no opts when called without arguments', async () => {

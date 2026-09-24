@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
-import { render } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render } from '@testing-library/react'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { SemanticGraphEdge, SemanticGraphNode as GraphNode, SemanticGraphNodeId } from '@deepseek-ai/dsh-schema-gateway/types'
 import { NodeDetailPanel } from '../src/client/NodeDetailPanel.tsx'
@@ -54,6 +54,30 @@ describe('NodeDetailPanel — domain chip color (ucl-7)', () => {
     expect(globalBetaBg).toBe(localAlphaBg)
     expect(globalAlphaBg).toBe(localBetaBg)
     global.unmount()
+  })
+})
+
+describe('NodeDetailPanel — selection and chat reference', () => {
+  it('renders nothing when no node is selected', () => {
+    const view = render(<NodeDetailPanel t={t} presentation={presentation} node={null} onClose={() => {}} />)
+    expect(view.container.innerHTML).toBe('')
+    view.unmount()
+  })
+
+  it('passes the selected node id to onInsertReference', () => {
+    const onInsertReference = vi.fn()
+    const view = render(
+      <NodeDetailPanel
+        t={t}
+        presentation={presentation}
+        node={node}
+        onClose={() => {}}
+        onInsertReference={onInsertReference}
+      />,
+    )
+    fireEvent.click(view.getByText(en['node.insertReference']))
+    expect(onInsertReference).toHaveBeenCalledWith('n1')
+    view.unmount()
   })
 })
 

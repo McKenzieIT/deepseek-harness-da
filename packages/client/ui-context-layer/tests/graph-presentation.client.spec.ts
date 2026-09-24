@@ -6,7 +6,16 @@ import {
   GENERIC_RELATION_ICON,
   createGraphPresentationRegistry,
 } from '../src/client/graph-presentation.ts'
-import { GENERIC_EDGE_COLOR, GENERIC_NODE_COLOR } from '../src/client/graph-styles.ts'
+import {
+  AGGREGATE_EDGE_COLOR,
+  DOMAIN_PALETTE,
+  GENERIC_EDGE_COLOR,
+  GENERIC_NODE_COLOR,
+  NODE_SIZE,
+  comboStyle,
+  edgeStyle,
+  nodeStyle,
+} from '../src/client/graph-styles.ts'
 import { en, type ContextLayerKey } from '../src/client/locales.ts'
 
 const t = (key: ContextLayerKey): string => en[key]
@@ -152,6 +161,20 @@ describe('graph presentation registry — registration seam (W27 acceptance 2)',
     expect(registry.resolveRelation(edge('visualizes'), t).generic).toBe(true)
   })
 
+  // A registration over a built-in kind must be undone by restoring the built-in,
+  // not by deleting the table entry — deleting would silently demote `dws` to the
+  // generic fallback for the rest of the session.
+  it('restores the built-in entry when a replacing registration is disposed', () => {
+    const registry = createGraphPresentationRegistry()
+    const dispose = registry.registerNode('dws', { labelKey: 'kind.metric', icon: '◆', fill: '#13c2c2' })
+    expect(registry.resolveNode(node('dws'), t).label).toBe(en['kind.metric'])
+
+    dispose()
+    const restored = registry.resolveNode(node('dws'), t)
+    expect(restored.generic).toBe(false)
+    expect(restored.label).toBe(en['kind.dws'])
+  })
+
   it('keeps handles independent: one registry never sees another registry entry', () => {
     const first = createGraphPresentationRegistry()
     const second = createGraphPresentationRegistry()
@@ -168,5 +191,42 @@ describe('graph presentation registry — eval decoration', () => {
     expect(withEval.style.stroke).not.toBe(withoutEval.style.stroke)
     expect(withEval.style.lineWidth).toBe(3)
     expect(withoutEval.style.lineWidth).toBe(1)
+  })
+})
+
+describe('graph-styles — presentation-driven G6 specs', () => {
+  it('maps a resolved node presentation onto the G6 node spec', () => {
+    const registry = createGraphPresentationRegistry()
+    const resolved = registry.resolveNode(node('dws', { evalPassRate: 0.25 }), t)
+    expect(nodeStyle(resolved.style)).toEqual({
+      fill: resolved.style.fill,
+      stroke: resolved.style.stroke,
+      lineWidth: 3,
+      size: NODE_SIZE,
+    })
+  })
+
+  // An inter-combo edge overrides the relation's stroke and width with the
+  // translucent aggregate pair, while the relation's own dash survives.
+  it('overrides stroke and width for an aggregate edge, keeping the relation dash', () => {
+    const registry = createGraphPresentationRegistry()
+    const resolved = registry.resolveRelation(edge('derived_from'), t)
+    expect(edgeStyle(resolved.style)).toEqual({
+      stroke: resolved.style.stroke,
+      lineWidth: resolved.style.lineWidth,
+      lineDash: resolved.style.lineDash,
+      endArrow: true,
+    })
+    expect(edgeStyle(resolved.style, true)).toEqual({
+      stroke: AGGREGATE_EDGE_COLOR,
+      lineWidth: 3,
+      lineDash: resolved.style.lineDash,
+      endArrow: true,
+    })
+  })
+
+  it('cycles the domain combo palette by index', () => {
+    expect(comboStyle(0)).toEqual(comboStyle(DOMAIN_PALETTE.length))
+    expect(comboStyle(1)).not.toEqual(comboStyle(0))
   })
 })

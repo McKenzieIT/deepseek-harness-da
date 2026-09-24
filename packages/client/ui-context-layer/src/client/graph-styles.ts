@@ -98,8 +98,13 @@ export function edgeStyle(style: RelationKindStyle, isAggregate = false): Record
  */
 export function comboStyle(domainIndex: number): Record<string, unknown> {
   const idx = domainIndex % DOMAIN_PALETTE.length
+  // The `??` arms below are unreachable at runtime: `idx = domainIndex % PALETTE.length`
+  // with a non-negative sorted-domain index always lands inside the palette. The literals
+  // exist only because `noUncheckedIndexedAccess` types the lookup as `T | undefined`.
   return {
+    /* v8 ignore next */
     fill: DOMAIN_PALETTE[idx] ?? '#e6f7ff',
+    /* v8 ignore next */
     stroke: DOMAIN_BORDER_PALETTE[idx] ?? '#91d5ff',
     lineWidth: 1,
     radius: 8,

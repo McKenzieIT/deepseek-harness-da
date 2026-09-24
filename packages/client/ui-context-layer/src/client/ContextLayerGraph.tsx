@@ -30,6 +30,7 @@ import {
   type ZoomLevel,
 } from './graph-layout.ts'
 import {
+  NODE_SIZE,
   nodeStyle,
   edgeStyle,
   comboStyle,
@@ -152,7 +153,7 @@ function applyLOD(graph: Graph, level: ZoomLevel): void {
     id: node.id,
     style: {
       labelText: lod.showLabel ? (node as { label?: string }).label ?? '' : '',
-      size: 32 * lod.nodeScale,
+      size: NODE_SIZE * lod.nodeScale,
     },
   }))
   graph.updateNodeData(nodeUpdates)
@@ -231,7 +232,7 @@ export function ContextLayerGraph({
       node: {
         type: 'circle',
         style: {
-          size: 32,
+          size: NODE_SIZE,
           labelPlacement: 'bottom',
           labelFontSize: 12,
         },
