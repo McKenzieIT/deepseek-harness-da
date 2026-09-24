@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import type { Graph } from '@antv/g6'
-import { fadeIn, useGraphAnimations } from '../src/client/graph-animations.ts'
+import { fadeIn, useGraphAnimations, useOverlayMode } from '../src/client/graph-animations.ts'
+import { GENERIC_NODE_COLOR, evalBorderColor } from '../src/client/graph-styles.ts'
 import type { GraphUpdate } from '../src/client/narration-gate.ts'
 
 // Controllable requestAnimationFrame: store callbacks in a queue keyed by
@@ -95,5 +96,60 @@ describe('graph-animations — fadeIn rAF leak (ucl-10)', () => {
 
     // Still exactly 1 call — the opacity-1 restore never fired post-unmount.
     expect(graph.updateNodeData).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('graph-animations — useOverlayMode reads no node kind (W27)', () => {
+  /** A G6 node payload as ContextLayerGraph.toG6Data writes it. */
+  function payloadNode(id: string, data: Record<string, unknown>) {
+    return { id, data }
+  }
+
+  it('restores the presentation-resolved fill the payload carries', () => {
+    const graph = makeMockGraph([payloadNode('n1', { fill: '#13c2c2', evalPassRate: 0.5 })])
+    const { result } = renderHook(() => useOverlayMode(graph as unknown as Graph))
+
+    expect(result.current.mode).toBe('off')
+    // `off` restores data.fill verbatim: the hook never re-derives a fill from a
+    // node kind, so a kind registered only in the presentation registry still
+    // survives leaving an overlay.
+    expect(graph.updateNodeData).toHaveBeenCalledWith([{
+      id: 'n1',
+      style: { fill: '#13c2c2', stroke: evalBorderColor(0.5), lineWidth: 3 },
+    }])
+  })
+
+  // A payload whose `data` compartment lost its fill (or carries a non-string)
+  // must still yield a CSS color string, not `undefined` or a prototype member.
+  it('falls back to the generic color when the payload carries no usable fill', () => {
+    const graph = makeMockGraph([payloadNode('n1', { fill: 42 })])
+    renderHook(() => useOverlayMode(graph as unknown as Graph))
+    expect(graph.updateNodeData).toHaveBeenCalledWith([{
+      id: 'n1',
+      style: { fill: GENERIC_NODE_COLOR, stroke: evalBorderColor(undefined), lineWidth: 1 },
+    }])
+  })
+
+  it('colors by eval data in coverage mode and by pass rate in heatmap mode', () => {
+    const graph = makeMockGraph([
+      payloadNode('withEval', { fill: '#13c2c2', evalPassRate: 1 }),
+      payloadNode('noEval', { fill: '#13c2c2' }),
+    ])
+    const { result } = renderHook(() => useOverlayMode(graph as unknown as Graph))
+
+    act(() => { result.current.setMode('coverage') })
+    const coverage = graph.updateNodeData.mock.lastCall?.[0] as { style: { fill: string } }[]
+    expect(coverage[0]?.style.fill).not.toBe(coverage[1]?.style.fill)
+
+    act(() => { result.current.setMode('heatmap') })
+    const heatmap = graph.updateNodeData.mock.lastCall?.[0] as { style: { fill: string } }[]
+    expect(heatmap[0]?.style.fill).toBe(evalBorderColor(1))
+  })
+
+  it('does nothing without a graph or without nodes', () => {
+    renderHook(() => useOverlayMode(null))
+    const empty = makeMockGraph([])
+    renderHook(() => useOverlayMode(empty as unknown as Graph))
+    expect(empty.updateNodeData).not.toHaveBeenCalled()
   })
 })

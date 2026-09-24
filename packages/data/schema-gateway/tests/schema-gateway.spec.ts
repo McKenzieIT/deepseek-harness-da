@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
-import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+import { SemanticLayerService, type DataSourceKindPlugin, type GraphNodeProjection } from '@deepseek-ai/dsh-semantic-layer'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -20,6 +20,7 @@ function seedLayer(): string {
   mkdirSync(join(dir, 'tables'), { recursive: true })
   mkdirSync(join(dir, 'events', 'pay'), { recursive: true })
   mkdirSync(join(dir, 'metrics'), { recursive: true })
+  mkdirSync(join(dir, 'concepts'), { recursive: true })
 
   writeFileSync(join(dir, 'tables', 'dws_order_di.yaml'), yaml.dump({
     table_name: 'dws_order_di', kind: 'dws', description: '订单汇总表',
@@ -74,6 +75,16 @@ function seedLayer(): string {
     relations: [{ type: 'derived_from', target: 'dws_order_di', description: '' }],
   }))
 
+  // W27: concepts for both asset domains — every asset.domains ref resolves, so
+  // the relation-graph build derives concept→asset related_to edges with no
+  // dangling-domain warnings.
+  writeFileSync(join(dir, 'concepts', '付费经济.yaml'), yaml.dump({
+    name: '付费经济', description: '充值、消费、商城购买', pref_label: '付费',
+  }))
+  writeFileSync(join(dir, 'concepts', '基础数据.yaml'), yaml.dump({
+    name: '基础数据', description: '维度基础数据',
+  }))
+
   return dir
 }
 
@@ -83,6 +94,17 @@ async function makeGateway(): Promise<SchemaGateway> {
   const ctx = new Context()
   new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
   return new SchemaGateway(ctx)
+}
+
+/** makeGateway variant exposing the real service + root so a test can register
+ * a new kind and seed its storage dir (test-kind flow-through). */
+async function makeGatewayEx(): Promise<{ gw: SchemaGateway; svc: SemanticLayerService; dir: string }> {
+  const dir = seedLayer()
+  const { Context } = await import('@deepseek-ai/cordis')
+  const ctx = new Context()
+  const svc = new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+  const gw = new SchemaGateway(ctx)
+  return { gw, svc, dir }
 }
 
 /**
@@ -343,4 +365,155 @@ describe('SchemaGateway', () => {
     // BUG (pre-di-5): keyed on scopeB version (999===999) → stale hit → stays 1.
     expect(loadCalls).toBe(2)
   })
+})
+
+describe('SchemaGateway.getGraphData (W27 registry-driven projection)', () => {
+  it('projects table, event, and concept nodes (metric excluded by default)', async () => {
+    const gw = await makeGateway()
+    const { nodes } = gw.getGraphData()
+    const byId = new Map(nodes.map(n => [n.id as string, n]))
+    // Registered kinds all reach the graph: dws + dim tables, the event, and
+    // both concepts. metric is excluded when includeMetrics is not set.
+    expect(byId.get('dws_order_di')?.kind).toBe('dws')
+    expect(byId.get('dim_server')?.kind).toBe('dim')
+    expect(byId.get('game.pay.order')?.kind).toBe('event')
+    expect(byId.get('concept:付费经济')?.kind).toBe('concept')
+    expect(byId.get('concept:基础数据')?.kind).toBe('concept')
+    expect(byId.has('dws_order_di__total_amount')).toBe(false)
+  })
+
+  it('emits concept→asset related_to edges (regression: concept nodes were dropped pre-W27)', async () => {
+    const gw = await makeGateway()
+    const { edges } = gw.getGraphData()
+    const conceptEdge = edges.find(
+      e => (e.source as string) === 'concept:付费经济' && (e.target as string) === 'dws_order_di',
+    )
+    expect(conceptEdge).toBeDefined()
+    expect(conceptEdge?.type).toBe('related_to')
+  })
+
+  it('includeMetrics adds the derived metric node', async () => {
+    const gw = await makeGateway()
+    const { nodes } = gw.getGraphData({ includeMetrics: true })
+    const metric = nodes.find(n => (n.id as string) === 'dws_order_di__total_amount')
+    expect(metric).toBeDefined()
+    expect(metric?.kind).toBe('metric')
+  })
+
+  it('domain filter restricts nodes to the requested domain', async () => {
+    const gw = await makeGateway()
+    const { nodes } = gw.getGraphData({ domain: '付费经济' })
+    const ids = new Set(nodes.map(n => n.id as string))
+    expect(ids.has('dws_order_di')).toBe(true)
+    expect(ids.has('game.pay.order')).toBe(true)
+    expect(ids.has('concept:付费经济')).toBe(true)
+    // 基础数据-only assets are filtered out.
+    expect(ids.has('dim_server')).toBe(false)
+    expect(ids.has('concept:基础数据')).toBe(false)
+  })
+
+  it('focus that names no projected node returns an empty subgraph', async () => {
+    const gw = await makeGateway()
+    expect(gw.getGraphData({ focus: 'no_such_node' })).toEqual({ nodes: [], edges: [] })
+  })
+
+  it('focus with depth 0 returns only the focus node', async () => {
+    const gw = await makeGateway()
+    const { nodes, edges } = gw.getGraphData({ focus: 'concept:付费经济', depth: 0 })
+    expect(nodes.map(n => n.id as string)).toEqual(['concept:付费经济'])
+    expect(edges).toEqual([])
+  })
+
+  it('bounded BFS from focus reaches its related assets at depth 1', async () => {
+    const gw = await makeGateway()
+    const { nodes } = gw.getGraphData({ focus: 'concept:付费经济', depth: 1 })
+    const ids = new Set(nodes.map(n => n.id as string))
+    expect(ids.has('concept:付费经济')).toBe(true)
+    expect(ids.has('dws_order_di')).toBe(true)
+    expect(ids.has('game.pay.order')).toBe(true)
+  })
+
+  it('a kind registered after build reaches the graph with its open kind — no gateway change', async () => {
+    const { gw, svc, dir } = await makeGatewayEx()
+    // A brand-new kind with its own storage dir + open `kind` string. The
+    // gateway has no per-kind switch, so registering the kind is enough for its
+    // node to flow through getGraphData to the client.
+    mkdirSync(join(dir, 'charts'), { recursive: true })
+    writeFileSync(join(dir, 'charts', 'weekly_revenue.yaml'), yaml.dump({ name: 'weekly_revenue', domains: ['付费经济'] }))
+    const chartKind: DataSourceKindPlugin<{ name: string; domains: string[] }> = {
+      kind: 'chart',
+      storageDir: 'charts',
+      schema: {
+        parse: r => r as { name: string; domains: string[] },
+        safeParse: r => ({ success: true, data: r as { name: string; domains: string[] } }),
+      },
+      getId: raw => (typeof raw.name === 'string' ? raw.name : undefined),
+      toCorpusItem: () => null,
+      toPromptContext: () => '',
+      relations: () => [],
+      toGraphNode: (def): GraphNodeProjection => ({ id: def.name, kind: 'chart', label: def.name, domains: [...def.domains] }),
+    }
+    svc.getRegistry().register(chartKind)
+    const { nodes } = gw.getGraphData()
+    const chart = nodes.find(n => (n.id as string) === 'weekly_revenue')
+    expect(chart).toBeDefined()
+    expect(chart?.kind).toBe('chart')
+  })
+
+  it('a kind may decline the graph by returning null from toGraphNode', async () => {
+    const { gw, svc, dir } = await makeGatewayEx()
+    mkdirSync(join(dir, 'hidden'), { recursive: true })
+    writeFileSync(join(dir, 'hidden', 'secret.yaml'), yaml.dump({ name: 'secret' }))
+    svc.getRegistry().register({
+      kind: 'hidden',
+      storageDir: 'hidden',
+      schema: { parse: r => r, safeParse: r => ({ success: true, data: r }) },
+      getId: raw => (typeof raw.name === 'string' ? (raw.name as string) : undefined),
+      toCorpusItem: () => null,
+      toPromptContext: () => '',
+      relations: () => [],
+      toGraphNode: () => null,
+    })
+    const { nodes } = gw.getGraphData()
+    expect(nodes.some(n => (n.id as string) === 'secret')).toBe(false)
+  })
+})
+
+// W27: additional projection tests — two-hop exclusion + invalid file
+// definition. These complement the graph-remote.spec.ts Remote-transport
+// tests with Service-level assertions.
+
+it('two-hop exclusion: depth 1 from focus excludes 2-hop nodes', async () => {
+  // concept:付费经济 → dws_order_di (1-hop); dws_order_di → concept:基础数据
+  // is NOT an edge (different concept); but concept:付费经济 → game.pay.order
+  // (1-hop). At depth 1, only 1-hop nodes are included; any 2-hop node
+  // (reachable from dws_order_di's other edges) is excluded.
+  const gw = await makeGateway()
+  const { nodes } = gw.getGraphData({ focus: 'concept:付费经济', depth: 1 })
+  const ids = new Set(nodes.map(n => n.id as string))
+  expect(ids.has('concept:付费经济')).toBe(true)
+  expect(ids.has('dws_order_di')).toBe(true)
+  expect(ids.has('game.pay.order')).toBe(true)
+  // dim_server is NOT reachable from concept:付费经济 (different domain) —
+  // even at unlimited depth it would not appear because there is no edge.
+  expect(ids.has('dim_server')).toBe(false)
+})
+
+it('depth 0 excludes all 1-hop nodes (only the focus node)', async () => {
+  const gw = await makeGateway()
+  const { nodes } = gw.getGraphData({ focus: 'concept:付费经济', depth: 0 })
+  expect(nodes.map(n => n.id as string)).toEqual(['concept:付费经济'])
+})
+
+it('unlimited depth from focus reaches all connected nodes', async () => {
+  const gw = await makeGateway()
+  const { nodes } = gw.getGraphData({ focus: 'concept:付费经济' })
+  const ids = new Set(nodes.map(n => n.id as string))
+  expect(ids.has('concept:付费经济')).toBe(true)
+  expect(ids.has('dws_order_di')).toBe(true)
+  expect(ids.has('game.pay.order')).toBe(true)
+  // dim_server + concept:基础数据 are in a different domain component —
+  // not reachable from 付费经济 via any edge.
+  expect(ids.has('dim_server')).toBe(false)
+  expect(ids.has('concept:基础数据')).toBe(false)
 })

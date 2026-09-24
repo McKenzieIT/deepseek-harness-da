@@ -16,7 +16,7 @@ const K11_ROOT = resolve(import.meta.dirname, '../../../../examples/k11-semantic
 
 function buildK11Graph(): RelationGraph {
   const g = new RelationGraph()
-  const entries: { sourceId: string; relations: { target: string; type: 'joins' | 'derived_from' | 'related_to'; on?: string }[] }[] = []
+  const entries: { sourceId: string; relations: { target: string; type: string; on?: string }[] }[] = []
   for (const t of loadTables(K11_ROOT)) {
     const r = TableDefinitionSchema.safeParse(t.raw)
     if (!r.success) continue

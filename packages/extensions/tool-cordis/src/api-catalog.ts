@@ -2036,6 +2036,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the full corpus (events + tables + metrics) ready for Bm25Linker.',
       },
       {
+        signature: 'projectGraphNodes(opts: { readonly includeDerived?: boolean } = {}): GraphNodeProjection[]',
+        description: 'Registry-driven semantic-graph node projection (W27): every registered kind\'s `toGraphNode` applied to each of its loaded definitions, followed by the nodes those kinds derive through their declared `derivedNodes` contributor (`metric` for `table` and `event`). Each kind contributes a node or explicitly declines (`null`). Iterating the registry, rather than hand-written per-kind loops, is what lets a kind registered later reach the graph — with derived nodes included — without editing the projection.\n\nUncached: it re-reads every registered kind\'s definitions from the ACTIVE scope root on each call. The Schema Gateway threads a per-request `scopeId` only to the relation-graph edge source, matching pre-W27 node-load behavior.',
+        parameters: [{ name: 'opts', description: '`includeDerived` (default `true`) projects each kind\'s derived nodes; pass `false` to skip deriving nodes the caller discards.' }],
+        returns: 'one projection per graph node: every registered kind\'s own nodes, then their derived nodes.',
+      },
+      {
         signature: 'setSchemaProvider(provider: SchemaProvider | undefined): void',
         description: 'Mount a live-engine schema provider (P6b Q3 deferred; follow-up mounts the real one).',
         parameters: [{ name: 'provider', description: 'the provider to delegate discover/describe/sample to, or undefined to clear.' }],
@@ -5235,11 +5241,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'DataSourceKindPlugin',
-    declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toExecutableRule?(def: T): string | null;\n}',
+    declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toGraphNode(def: T): GraphNodeProjection | null;\n    readonly derivedNodes?: DerivedNodeContributor<T>;\n    readonly grouping?: KindGrouping;\n    toExecutableRule?(def: T): string | null;\n}',
   },
   {
     name: 'DataSourceRegistry',
-    declaration: 'export class DataSourceRegistry {\n    register(plugin: DataSourceKindPlugin): void;\n    getKind(kind: string): DataSourceKindPlugin | undefined;\n    allKinds(): string[];\n    allPlugins(): DataSourceKindPlugin[];\n}',
+    declaration: 'export class DataSourceRegistry {\n    onChange(listener: () => void): () => void;\n    register(plugin: DataSourceKindPlugin): () => void;\n    getKind(kind: string): DataSourceKindPlugin | undefined;\n    allKinds(): string[];\n    allPlugins(): DataSourceKindPlugin[];\n}',
   },
   {
     name: 'DeepSeekLlmApiExtensionMap',
@@ -5260,6 +5266,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DefinitionSnapshot',
     declaration: 'export class DefinitionSnapshot {\n    readonly version: number;\n    constructor(version: number, tables: readonly RawTable[], events: readonly RawEvent[], corpus: readonly EventCorpusItem[]);\n    loadTableDefinition(name: string): TableDefinition | null;\n    loadEventDefinition(name: string): EventDefinition | null;\n    loadMetricDefinition(name: string): MetricDefinition | null;\n    loadRetrievalCorpus(): readonly EventCorpusItem[];\n    get tables(): readonly RawTable[];\n    get events(): readonly RawEvent[];\n}',
+  },
+  {
+    name: 'DerivedNodeContributor',
+    declaration: 'export interface DerivedNodeContributor<T = unknown, D = unknown> {\n    derive(def: T): readonly D[];\n    toGraphNode(derived: D): GraphNodeProjection | null;\n    relations(derived: D): RelationDef[];\n    toCorpusItem(derived: D): CorpusItem | null;\n}',
   },
   {
     name: 'DiffCallView',
@@ -5554,6 +5564,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface GrantRecord {\n    readonly kind: \'grant\';\n    readonly payload: unknown;\n}',
   },
   {
+    name: 'GraphNodeProjection',
+    declaration: 'export interface GraphNodeProjection {\n    readonly id: string;\n    readonly kind: string;\n    readonly label: string;\n    readonly domains: readonly string[];\n}',
+  },
+  {
     name: 'HostConnectionFetch',
     declaration: 'export interface HostConnectionFetch {\n    register(route: ConnectionFetchRoute): () => Promise<void>;\n}',
   },
@@ -5704,6 +5718,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'JsonValue',
     declaration: 'export type JsonValue = null | boolean | number | string | JsonValue[] | {\n    [key: string]: JsonValue;\n};',
+  },
+  {
+    name: 'KindGrouping',
+    declaration: 'export interface KindGrouping {\n    groupName(node: GraphNodeProjection): string;\n    readonly memberRelationType: string;\n}',
   },
   {
     name: 'KvFacet',
@@ -6299,15 +6317,15 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RelationDef',
-    declaration: 'export interface RelationDef {\n    readonly type: \'joins\' | \'derived_from\' | \'related_to\';\n    readonly target: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
+    declaration: 'export interface RelationDef {\n    readonly type: string;\n    readonly target: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
   },
   {
     name: 'RelationEdge',
-    declaration: 'export interface RelationEdge {\n    readonly targetId: string;\n    readonly type: \'joins\' | \'derived_from\' | \'related_to\';\n    readonly on?: string;\n    readonly description?: string;\n}',
+    declaration: 'export interface RelationEdge {\n    readonly targetId: string;\n    readonly type: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
   },
   {
     name: 'RelationGraph',
-    declaration: 'export class RelationGraph {\n    build(entries: {\n        sourceId: string;\n        relations: RelationDef[];\n    }[], aliasData?: readonly NodeAliasData[]): void;\n    findJoinPath(sourceId: string, targetId: string): string[] | null;\n    getRelated(sourceId: string, type?: \'joins\' | \'derived_from\' | \'related_to\'): RelationEdge[];\n    getJoinCondition(sourceId: string, targetId: string): string | null;\n    getDerived(sourceId: string): RelationEdge[];\n    resolveAlias(term: string): string[];\n    getAliases(nodeId: string): string[];\n}',
+    declaration: 'export class RelationGraph {\n    build(entries: {\n        sourceId: string;\n        relations: RelationDef[];\n    }[], aliasData?: readonly NodeAliasData[]): void;\n    findJoinPath(sourceId: string, targetId: string): string[] | null;\n    getRelated(sourceId: string, type?: string): RelationEdge[];\n    getJoinCondition(sourceId: string, targetId: string): string | null;\n    getDerived(sourceId: string): RelationEdge[];\n    resolveAlias(term: string): string[];\n    getAliases(nodeId: string): string[];\n}',
   },
   {
     name: 'Reload',

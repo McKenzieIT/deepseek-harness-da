@@ -12,7 +12,13 @@
       "path": "../locale"
     },
     {
+      "path": "../../util/brand"
+    },
+    {
       "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../data/schema-gateway"
     },
     {
       "path": "../connection/tsconfig.client.json"

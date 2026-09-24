@@ -877,6 +877,7 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   DataSourceRegistry: 'data source registry contract is owned by packages/data/semantic-layer/src/registry.ts',
   RelationGraph: 'relation graph contract is owned by packages/data/semantic-layer/src/relation-graph.ts',
   CorpusItem: 'retrieval corpus item contract is owned by packages/data/semantic-layer/src/registry.ts',
+  GraphNodeProjection: 'graph node projection contract is owned by packages/data/semantic-layer/src/registry.ts',
   LlmCall: 'enrichment llm call contract is owned by packages/data/semantic-layer/src/enrichment.ts',
   MetricDefinition: 'metric definition contract is owned by packages/data/semantic-layer/src/types.ts',
   EventCorpusItem: 'event corpus item contract is owned by packages/data/semantic-layer/src/corpus.ts',

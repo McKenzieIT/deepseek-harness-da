@@ -19,6 +19,7 @@ Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefi
 - [Structure](#structure)
 - [`ctx.schema` seam](#ctxschema-seam)
 - [P13b swap](#p13b-swap)
+- [Graph projection and registry lifecycle (W27)](#graph-projection-and-registry-lifecycle-w27)
 - [Verification](#verification)
 - [Dev Note](#dev-note)
 - [Model Experience](#model-experience)
@@ -61,6 +62,21 @@ declare module '@deepseek-ai/cordis' { interface Context { schema: SemanticLayer
 ## P13b swap
 
 P13b's local `CriticGuardData` (params_fields/partitions from a thin YAML reader) swaps additively to `ctx.schema.load_*`. `CriticCtx{candidateTables, eventParams, partitionCols}` contract unchanged; P13b engine logic unchanged. `makeCriticCtx({ candidateTables, eventParams: EventDefinition.params_fields, partitionCols: TableDefinition.partitions.map(p => p.name) })`.
+
+## Graph projection and registry lifecycle (W27)
+
+The semantic-graph projection is **registry-driven**: `projectGraphNodes()` iterates every registered kind's `toGraphNode(def)` — no hand-written per-kind loops — so a kind registered after build reaches the graph without a gateway change. `buildGraph(root)` collects relations the same way (iterating the registry). A kind MUST declare `RelationDef.target` as the canonical node id its owning kind mints in `toGraphNode`, prefix included (`chart:first`, not `first`): the build stores targets verbatim, because two kinds may hold a node of the same name and mapping a bare name onto a prefixed id would silently route the edge to the wrong node. A target naming no projected node simply yields no edge.
+
+**Declared capabilities, not kind strings.** Two optional `DataSourceKindPlugin` fields carry what the projection would otherwise hardcode as `plugin.kind === 'table' | 'event' | 'concept'`, so a kind registered after build reaches everything a built-in does:
+
+- `derivedNodes` — the virtual definitions a kind derives from each of its own (`derive` / `toGraphNode` / `relations` / `toCorpusItem`). `metric` is the shipped case: `table` and `event` each derive one metric per inline `metrics:` entry, and those metrics reach the node projection, the graph edges, the alias index, and the retrieval corpus through this contributor alone.
+- `grouping` — declares this kind's nodes as taxonomy groups that other kinds join by naming the group in `GraphNodeProjection.domains`. `concept` is the shipped case: the build derives one `group → member` edge per resolved name (`related_to` for concepts), skips and reports unresolved names through `getDanglingDomainRefs()`, and never makes a grouping node its own member.
+
+`projectGraphNodes({ includeDerived })` (default `true`) skips deriving nodes the caller discards. The Schema Gateway passes its `includeMetrics` query field, so a graph request without metrics no longer pays for deriving them — and because derived nodes now come from the definitions the registry loop already loaded, the projection no longer runs a second full `tables/` + `events/` scan.
+
+**Disposer + cache invalidation.** `registry.register(plugin)` returns an idempotent disposer that removes only this contribution. The registry fires `onChange` listeners on both add and remove; the `SemanticLayerService` wires one in its constructor to invalidate `graphCache` + `graphCacheByScope`, so a disposed kind's nodes/edges do not linger and a re-registered kind flows through without a restart. Install contributions with `ctx.effect(() => registry.register(plugin))` so the lifetime tracks the owning fiber. The constructor wires that listener and its three built-in kinds through `ctx.effect` unconditionally: a context without the fiber lifecycle fails at construction instead of yielding a service whose graph cache is never invalidated.
+
+**Input contract.** `RelationDef.type` is an open `string` (`joins` | `derived_from` | `related_to` or a kind-declared type); `GraphNodeProjection` carries a plain `string` id + open `kind`. The Schema Gateway brands `id` at the Remote boundary. `storageDir` is a directory name, not a loader selector: the three bespoke layouts (`events` domain subdirs, flat `tables`, flat `concepts`) are selected by built-in plugin identity, so a registered kind declaring `storageDir: 'tables'` is still read generically and validated by its own `schema.safeParse` instead of receiving parsed `TableDefinition` objects. `io.ts` `loadDomains` rejects YAML arrays (uses `isPlainObject`, not `typeof === 'object'`) so a list-shaped `domains.yaml` degrades to `{}`.
 
 ## Verification
 

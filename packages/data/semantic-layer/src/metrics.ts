@@ -18,6 +18,7 @@ import {
   type MetricDef,
   type MetricDefinition,
 } from './types.ts'
+import type { GraphNodeProjection } from './registry.ts'
 import { loadTables, loadEvents } from './io.ts'
 
 // ── helpers (best-effort, deterministic) ───────────────────────────────
@@ -221,4 +222,22 @@ export function extractMetricsFromTables(semanticLayer: string): MetricDefinitio
  */
 export function loadMetricDefinitions(semanticLayer: string): MetricDefinition[] {
   return extractMetricsFromTables(semanticLayer)
+}
+
+/**
+ * Project one derived metric as a `metric` graph node (W27). `metric` is not a
+ * registered kind — metrics are virtual, derived from host table/event
+ * `metrics:` blocks — so the `table` and `event` kinds reach the graph with
+ * them through their declared `derivedNodes` contributor, which uses this as
+ * its `toGraphNode`.
+ * @param def - a derived metric definition.
+ * @returns the `metric`-kind graph node for that metric.
+ */
+export function metricGraphNode(def: MetricDefinition): GraphNodeProjection {
+  return {
+    id: def.name,
+    kind: 'metric',
+    label: def.name,
+    domains: [...def.domains],
+  }
 }

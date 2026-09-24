@@ -6,12 +6,21 @@
  * @module @deepseek-ai/dsh-semantic-layer/src/kinds/table-kind
  */
 import { TableDefinitionSchema, type TableDefinition } from '../types.ts'
-import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem } from '../registry.ts'
+import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem, GraphNodeProjection } from '../registry.ts'
+import { deriveMetricRelations, extractMetricsFromTable, metricGraphNode, projectMetricCorpusItem } from '../metrics.ts'
 /** tableKindPlugin */
 export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
   kind: 'table',
   schema: TableDefinitionSchema,
   storageDir: 'tables',
+
+  // A table's inline `metrics:` block derives one virtual `metric` node each.
+  derivedNodes: {
+    derive: extractMetricsFromTable,
+    toGraphNode: metricGraphNode,
+    relations: deriveMetricRelations,
+    toCorpusItem: projectMetricCorpusItem,
+  },
 
   getId(raw) {
     return typeof raw.table_name === 'string' ? raw.table_name : undefined
@@ -66,6 +75,12 @@ export const tableKindPlugin: DataSourceKindPlugin<TableDefinition> = {
     return {
       partitionCols: def.partitions.map(p => p.name),
     }
+  },
+
+  toGraphNode(def): GraphNodeProjection {
+    // A table's graph kind is its storage kind (`dws`/`dim`/…), carried open so
+    // a new table kind needs no gateway change.
+    return { id: def.table_name, kind: def.kind, label: def.table_name, domains: [...def.domains] }
   },
 
   relations(def): RelationDef[] {

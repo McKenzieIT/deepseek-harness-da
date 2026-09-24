@@ -16,6 +16,7 @@ TODO: translate: Read-only Remote projection of ctx.schema (SemanticLayerService
 ## 目录
 
 - [开发备注](#dev-note)
+- [语义图投影](#semantic-graph-projection)
 - [模型体验](#model-experience)
 - [已知限制与延后工作](#known-limitations-and-deferred-work)
 
@@ -28,6 +29,19 @@ TODO: translate: Read-only Remote projection of ctx.schema (SemanticLayerService
 ## 开发备注
 
 无。
+
+<a id="semantic-graph-projection"></a>
+## 语义图投影
+
+`getGraphData(query?, scopeId?)` 返回 `SemanticGraphData`（`SemanticGraphNode[]` 与 `SemanticGraphEdge[]`）。节点与关系 `kind` 是开放的 `string`，不是封闭 union，因此本包构建之后注册的 Semantic-Layer kind（`concept` 或任何未来/测试 kind）无需修改网关即可到达客户端。节点来自 `ctx.schema.projectGraphNodes()`——每个已注册 kind 的 `toGraphNode` 贡献，加上这些 kind 通过 `derivedNodes` 声明的派生节点——因此没有手写的三组平行循环；边来自 RelationGraph。节点 id 在此远程边界被 brand 为 `SemanticGraphNodeId`。
+
+`query` 字段：`domain`（按单一 domain/group 过滤）、`focus`（BFS 根——当其指向的节点不在投影中时返回空子图）、`depth`（从 focus 起的有界 BFS；`0` 表示仅 focus）、`includeMetrics`（默认 false；将派生节点——目前只有 `metric`——排除在投影之外）。未知 kind 不会被丢弃——客户端 presentation registry 以通用可访问形式渲染。
+
+**派生 metric。** `metric` kind 节点是虚拟的——不是已注册 kind。`table` 与 `event` kind 通过各自声明的 `derivedNodes` 能力，从自身 `metrics:` 块派生出它们。`includeMetrics: false`（默认）直达投影，因此图只展示策展资产且不执行任何派生；`true` 会添加这些 metric 节点及一条指向源表/事件的 `derived_from` 边。
+
+**Null 退出。** 一个 kind 的 `toGraphNode(def)` 返回 `null` 即声明该定义不是图节点——不产生节点，也不产生从它出发的边。这样，一个 kind 可以为语料/检索索引注册而不进入可视化图。
+
+**输入与生命周期。** `SemanticGraphQuery` 输入是纯可序列化对象（`domain?`、`focus?`、`depth?`、`includeMetrics?`）——没有 fiber 或 context 句柄跨进程传递。关系图缓存在 kind 增删时失效（registry 的 `onChange` 监听），因此已销毁 kind 的节点/边不会残留，重新注册的 kind 无需重启即可流过。节点投影（`projectGraphNodes`）不缓存——它迭代活跃 registry，新注册 kind 的节点在下次调用即出现。
 
 
 <a id="model-experience"></a>

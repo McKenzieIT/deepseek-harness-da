@@ -164,8 +164,13 @@ export function loadDomains(semanticLayer: string): Record<string, unknown> {
   if (!existsSync(p)) return {}
   try {
     const d = readYaml(p)
-    return typeof d === 'object' && d !== null ? (d as Record<string, unknown>) : {}
+    // Array/object contract: a YAML array parses as an object (`typeof === 'object'`)
+    // but is NOT a valid domains map. Reject arrays explicitly so a malformed
+    // domains.yaml (a list, not a map) degrades to `{}` rather than silently
+    // casting index keys to strings.
+    return isPlainObject(d) ? d : {}
   } catch {
+    // malformed/missing domains.yaml — degrade to {} so callers get a stable map
     return {}
   }
 }
@@ -307,6 +312,34 @@ export function loadConceptDefinition(semanticLayer: string, name: string): Conc
     if (c.name === name) return ConceptDefinitionSchema.parse(c.raw)
   }
   return null
+}
+
+/**
+ * Generic flat scan of `<semanticLayer>/<dir>/*.yaml` returning each file's raw
+ * object dict (lenient: broken/non-object YAML and `_`-prefixed files skipped).
+ * The kind-agnostic reader for storage dirs without a bespoke loader — used by
+ * the registry-driven graph projection (W27) so a kind registered after build
+ * can load its definitions without a hardcoded per-kind loader. Bespoke layouts
+ * (events' domain subdirs, tables) keep their own loaders.
+ * @param semanticLayer - the semantic-layer directory path.
+ * @param dir - the storage subdirectory name.
+ * @returns a fresh array of raw object dicts, filename-sorted.
+ */
+export function loadRawDir(semanticLayer: string, dir: string): Record<string, unknown>[] {
+  const d = join(semanticLayer, dir)
+  const out: Record<string, unknown>[] = []
+  if (!existsSync(d)) return out
+  for (const f of readdirSync(d).sort()) {
+    if (!f.endsWith('.yaml') || f.startsWith('_')) continue
+    try {
+      const raw = readYaml(join(d, f))
+      if (typeof raw !== 'object' || raw === null) continue
+      out.push(raw as Record<string, unknown>)
+    } catch {
+      continue
+    }
+  }
+  return out
 }
 
 // semantic-layer-9: isPlainObject imported from ./corpus.ts above (was a byte-identical private dup here).

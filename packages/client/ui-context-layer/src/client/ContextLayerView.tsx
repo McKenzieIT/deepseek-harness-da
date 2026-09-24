@@ -9,8 +9,9 @@ import { DomainFilterToolbar } from './DomainFilterToolbar.tsx'
 import { SearchBar } from './SearchBar.tsx'
 import { OverlayToggle } from './OverlayToggle.tsx'
 import { useOverlayMode, useGraphAnimations } from './graph-animations.ts'
-import type { GraphData, GraphNode } from './types.ts'
+import type { SemanticGraphData as GraphData, SemanticGraphNode as GraphNode } from '@deepseek-ai/dsh-schema-gateway/types'
 import type { SessionEventSource, GraphUpdate } from './narration-gate.ts'
+import type { GraphPresentationReader } from './graph-presentation.ts'
 import type { ContextLayerTranslate } from './locales.ts'
 
 export interface ContextLayerViewProps {
@@ -20,6 +21,8 @@ export interface ContextLayerViewProps {
   isStreaming?: boolean
   eventSource?: SessionEventSource | null
   onInsertReference?: (assetName: string) => void
+  /** Resolves the node and relation kinds the graph and detail panel render. */
+  presentation: GraphPresentationReader
   /** Localized copy shared by the graph controls and management chat. */
   t: ContextLayerTranslate
 }
@@ -31,6 +34,7 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
   isStreaming = false,
   eventSource = null,
   onInsertReference,
+  presentation,
   t,
 }) => {
   const [graphInstance, setGraphInstance] = useState<Graph | null>(null)
@@ -88,6 +92,13 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
     handleNodeClick(nodeId)
   }, [handleNodeClick])
 
+  // Relations incident to the selected node, so the detail panel can render each
+  // relation kind through the presentation registry.
+  const selectedRelations = useMemo(() => {
+    if (!data || !selectedNode) return []
+    return data.edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id)
+  }, [data, selectedNode])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100vh', overflow: 'hidden' }}>
       {/* Graph area */}
@@ -98,6 +109,8 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
             data={filteredData}
             onNodeClick={handleNodeClick}
             onGraphReady={setGraphInstance}
+            presentation={presentation}
+            t={t}
           />
 
           {/* Node detail panel overlay */}
@@ -107,6 +120,8 @@ export const ContextLayerView: FC<ContextLayerViewProps> = ({
                 node={selectedNode}
                 onClose={handleCloseDetail}
                 allDomains={allDomains}
+                relations={selectedRelations}
+                presentation={presentation}
                 t={t}
                 {...(onInsertReference ? { onInsertReference } : {})}
               />

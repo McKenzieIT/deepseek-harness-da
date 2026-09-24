@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { render, fireEvent, act, waitFor } from '@testing-library/react'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type { SemanticGraphData as GraphData, SemanticGraphNodeId } from '@deepseek-ai/dsh-schema-gateway/types'
 import { ContextLayerService } from '../src/client/service.ts'
 import { ContextLayerOverlay } from '../src/client/ContextLayerOverlay.tsx'
-import type { GraphData } from '../src/client/types.ts'
 import type { GraphDataClient } from '../src/client/graphDataBridge.ts'
+import { createGraphPresentationRegistry } from '../src/client/graph-presentation.ts'
 import { en, type ContextLayerKey } from '../src/client/locales.ts'
 
 const t = (key: ContextLayerKey): string => en[key]
+const presentation = createGraphPresentationRegistry()
 
 vi.mock('../src/client/ContextLayerView.tsx', () => ({
   ContextLayerView: (props: { data: unknown }) => (
@@ -15,9 +18,12 @@ vi.mock('../src/client/ContextLayerView.tsx', () => ({
   ),
 }))
 
+/** Branding only the id keeps every other fixture field under field-level typechecking. */
+const id = (value: string): SemanticGraphNodeId => brandString<SemanticGraphNodeId>(value)
+
 const MOCK_DATA: GraphData = {
-  nodes: [{ id: 'n1', kind: 'dws', label: 'Node1', domains: ['core'] }],
-  edges: [{ source: 'n1', target: 'n2', type: 'joins' }],
+  nodes: [{ id: id('n1'), kind: 'dws', label: 'Node1', domains: ['core'] }],
+  edges: [{ source: id('n1'), target: id('n2'), type: 'joins' }],
 }
 
 function mockGraphClient(data: GraphData = MOCK_DATA): GraphDataClient {
@@ -27,14 +33,14 @@ function mockGraphClient(data: GraphData = MOCK_DATA): GraphDataClient {
 describe('ContextLayerOverlay', () => {
   it('renders nothing when service is closed', () => {
     const service = new ContextLayerService()
-    const { container } = render(<ContextLayerOverlay t={t} service={service} />)
+    const { container } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} />)
     expect(container.innerHTML).toBe('')
   })
 
   it('renders fullscreen container when service is open', () => {
     const service = new ContextLayerService()
     service.open()
-    const { container } = render(<ContextLayerOverlay t={t} service={service} />)
+    const { container } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} />)
     const overlay = container.firstElementChild as HTMLElement
     expect(overlay).not.toBeNull()
     expect(overlay.style.position).toBe('fixed')
@@ -45,14 +51,14 @@ describe('ContextLayerOverlay', () => {
   it('renders ContextLayerView inside when open', () => {
     const service = new ContextLayerService()
     service.open('my-node')
-    const { container } = render(<ContextLayerOverlay t={t} service={service} />)
+    const { container } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} />)
     expect(container.querySelector('[data-testid="context-layer-view"]')).not.toBeNull()
   })
 
   it('close button calls service.close()', () => {
     const service = new ContextLayerService()
     service.open()
-    const { container } = render(<ContextLayerOverlay t={t} service={service} />)
+    const { container } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} />)
     const btn = container.querySelector('button[aria-label="Close"]')!
     fireEvent.click(btn)
     expect(service.isOpen).toBe(false)
@@ -61,10 +67,10 @@ describe('ContextLayerOverlay', () => {
   it('re-renders to null after close', () => {
     const service = new ContextLayerService()
     service.open()
-    const { container, rerender } = render(<ContextLayerOverlay t={t} service={service} />)
+    const { container, rerender } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} />)
     expect(container.firstElementChild).not.toBeNull()
     fireEvent.click(container.querySelector('button[aria-label="Close"]')!)
-    rerender(<ContextLayerOverlay t={t} service={service} />)
+    rerender(<ContextLayerOverlay t={t} presentation={presentation} service={service} />)
     expect(container.innerHTML).toBe('')
   })
 
@@ -73,7 +79,7 @@ describe('ContextLayerOverlay', () => {
     const client = mockGraphClient()
     service.open('focus-node')
 
-    const { container } = render(<ContextLayerOverlay t={t} service={service} graphClient={client} />)
+    const { container } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} graphClient={client} />)
 
     await waitFor(() => {
       const view = container.querySelector('[data-testid="context-layer-view"]')
@@ -87,7 +93,7 @@ describe('ContextLayerOverlay', () => {
     const client = mockGraphClient()
     service.open()
 
-    render(<ContextLayerOverlay t={t} service={service} graphClient={client} />)
+    render(<ContextLayerOverlay t={t} presentation={presentation} service={service} graphClient={client} />)
 
     await waitFor(() => {
       expect(client.fetchGraphData).toHaveBeenCalledWith(undefined)
@@ -98,7 +104,7 @@ describe('ContextLayerOverlay', () => {
     const service = new ContextLayerService()
     service.open('focus-node')
 
-    const { container } = render(<ContextLayerOverlay t={t} service={service} graphClient={null} />)
+    const { container } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} graphClient={null} />)
 
     const view = container.querySelector('[data-testid="context-layer-view"]')
     expect(view?.getAttribute('data-has-data')).toBe('false')
@@ -109,14 +115,14 @@ describe('ContextLayerOverlay', () => {
     const client = mockGraphClient()
     service.open('node-a')
 
-    const { rerender } = render(<ContextLayerOverlay t={t} service={service} graphClient={client} />)
+    const { rerender } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} graphClient={client} />)
 
     await waitFor(() => {
       expect(client.fetchGraphData).toHaveBeenCalledWith({ focus: 'node-a' })
     })
 
     act(() => { service.open('node-b') })
-    rerender(<ContextLayerOverlay t={t} service={service} graphClient={client} />)
+    rerender(<ContextLayerOverlay t={t} presentation={presentation} service={service} graphClient={client} />)
 
     await waitFor(() => {
       expect(client.fetchGraphData).toHaveBeenCalledWith({ focus: 'node-b' })
@@ -128,7 +134,7 @@ describe('ContextLayerOverlay', () => {
     const client = mockGraphClient()
     service.open('x')
 
-    const { container, rerender } = render(<ContextLayerOverlay t={t} service={service} graphClient={client} />)
+    const { container, rerender } = render(<ContextLayerOverlay t={t} presentation={presentation} service={service} graphClient={client} />)
 
     await waitFor(() => {
       const view = container.querySelector('[data-testid="context-layer-view"]')
@@ -136,7 +142,7 @@ describe('ContextLayerOverlay', () => {
     })
 
     act(() => { service.close() })
-    rerender(<ContextLayerOverlay t={t} service={service} graphClient={client} />)
+    rerender(<ContextLayerOverlay t={t} presentation={presentation} service={service} graphClient={client} />)
     expect(container.innerHTML).toBe('')
   })
 })

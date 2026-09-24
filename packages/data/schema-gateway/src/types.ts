@@ -57,48 +57,76 @@ export interface DomainEntry {
  */
 export type Json = string | number | boolean | null | readonly Json[] | { readonly [key: string]: Json }
 
-// ── W10: Context Layer Graph types ──────────────────────────────────────
+// ── Semantic Graph projection types (W27) ───────────────────────────────
+//
+// The graph projection is OPEN: node and relation `kind` are `string`, not a
+// closed union, so a Semantic-Layer kind registered after this package built
+// (e.g. `concept`, or any future/test kind) reaches the client through the
+// same RPC without editing this file. Node identity crosses the Remote wire,
+// so it is branded (`SemanticGraphNodeId`) rather than a bare `string`; the
+// Host mints branded ids at the projection boundary (see `getGraphData`).
 
-/** Options for the getGraphData RPC. */
-export interface GraphDataOpts {
-  /** Filter to nodes in a specific domain. */
+import type { Branded } from '@deepseek-ai/dsh-brand'
+
+/**
+ * Opaque cross-process identity of a semantic-graph node (table_name, event
+ * name, `metric` name, or `concept:<name>`). Branded so a caller cannot pass an
+ * arbitrary string where the Host expects a node the projection minted.
+ */
+export type SemanticGraphNodeId = Branded<'SemanticGraphNodeId'>
+
+/** Query fields for the getGraphData RPC. */
+export interface SemanticGraphQuery {
+  /** Filter to nodes in a specific domain/group. */
   readonly domain?: string
-  /** Center the graph on a specific node id (BFS root). */
+  /**
+   * Center the graph on a node id (BFS root). A caller-provided selector, kept
+   * as a plain `string`: the Host resolves it against the minted node ids and
+   * returns an empty subgraph when it names no projected node.
+   */
   readonly focus?: string
-  /** BFS depth from focus node (default: unlimited). */
+  /** BFS depth from the focus node (default: unlimited). */
   readonly depth?: number
-  /** Include metric nodes in the graph (default: false). */
+  /** Include derived `metric` nodes in the graph (default: false). */
   readonly includeMetrics?: boolean
 }
 
-/** A node in the context-layer graph. */
-export interface GraphNode {
-  /** Unique identifier (table_name, event name, or metric name). */
-  readonly id: string
-  /** Kind of data source. */
-  readonly kind: 'dws' | 'dim' | 'event' | 'metric'
+/**
+ * A node in the semantic graph. `kind` is an OPEN string (e.g. `dws`, `dim`,
+ * `event`, `metric`, `concept`, or a kind registered later) — the client
+ * presentation registry renders known kinds and falls back to a generic form
+ * for unknown ones.
+ */
+export interface SemanticGraphNode {
+  /** Branded cross-process node identity. */
+  readonly id: SemanticGraphNodeId
+  /** Open node kind — a client-side presentation key, never a closed union. */
+  readonly kind: string
   /** Display label. */
   readonly label: string
-  /** Domain(s) the node belongs to. */
+  /** Domain(s)/group(s) the node belongs to. */
   readonly domains: readonly string[]
-  /** Eval pass rate (0–1), undefined if no eval data available. */
+  /** Eval pass rate (0–1), undefined when no eval data is available. */
   readonly evalPassRate?: number
 }
 
-/** An edge in the context-layer graph. */
-export interface GraphEdge {
+/**
+ * An edge in the semantic graph. `type` is an OPEN relation kind (e.g. `joins`,
+ * `derived_from`, `related_to`, or a relation registered later).
+ */
+export interface SemanticGraphEdge {
   /** Source node id. */
-  readonly source: string
+  readonly source: SemanticGraphNodeId
   /** Target node id. */
-  readonly target: string
-  /** Relation type (joins | derived_from | related_to). */
+  readonly target: SemanticGraphNodeId
+  /** Open relation kind. */
   readonly type: string
-  /** Join condition expression (for 'joins' type). */
+  /** Join condition expression (for `joins`-type relations). */
   readonly on?: string
 }
 
-/** Response from getGraphData: full node+edge set for the context layer. */
-export interface GraphData {
-  readonly nodes: readonly GraphNode[]
-  readonly edges: readonly GraphEdge[]
+/** Response from getGraphData: the full node + edge set for the semantic graph. */
+export interface SemanticGraphData {
+  readonly nodes: readonly SemanticGraphNode[]
+  readonly edges: readonly SemanticGraphEdge[]
 }

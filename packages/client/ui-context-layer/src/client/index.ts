@@ -9,9 +9,12 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+import type { SemanticGraphData, SemanticGraphQuery } from '@deepseek-ai/dsh-schema-gateway/types'
 import { ContextLayerService, type IContextLayer } from './service.ts'
 import { ContextLayerOverlay } from './ContextLayerOverlay.tsx'
 import { buildGraphDataClient } from './graphDataBridge.ts'
+import { createGraphPresentationRegistry } from './graph-presentation.ts'
 import { en, zh, type ContextLayerKey } from './locales.ts'
 
 export {
@@ -19,12 +22,15 @@ export {
   type ContextLayerGraphProps,
 } from './ContextLayerGraph.tsx'
 
-export type {
-  GraphData,
-  GraphNode,
-  GraphEdge,
-  GraphDataOpts,
-} from './types.ts'
+// The Graph RPC types live on the Schema Gateway package and are imported
+// directly from `@deepseek-ai/dsh-schema-gateway/types` by every file that
+// needs them. They are not re-exported here: a named cross-face re-export from
+// this client package would force the Cordis inspect catalog to verify each
+// name against the gateway's `./types` subpath from within the client analysis
+// batch, which cannot see the gateway's host source files. An empty
+// `export type {}` (as `api-remotes` uses) avoids that, but carries no value
+// when no external consumer imports these aliases from this package — and none
+// does (this package is a self-registering Cordis plugin, not an import target).
 
 export {
   getZoomLevel,
@@ -40,11 +46,28 @@ export {
   edgeStyle,
   comboStyle,
   evalBorderColor,
-  KIND_COLORS,
+  GENERIC_NODE_COLOR,
+  GENERIC_EDGE_COLOR,
   DOMAIN_PALETTE,
   DOMAIN_BORDER_PALETTE,
-  type NodeKind,
 } from './graph-styles.ts'
+
+export {
+  createGraphPresentationRegistry,
+  GENERIC_NODE_ICON,
+  GENERIC_RELATION_ICON,
+  type GraphDetailRow,
+  type GraphPresentationReader,
+  type GraphPresentationRegistry,
+  type NodeDetailRenderer,
+  type NodeKindSpec,
+  type NodeKindStyle,
+  type NodePresentation,
+  type RelationDetailRenderer,
+  type RelationKindSpec,
+  type RelationKindStyle,
+  type RelationPresentation,
+} from './graph-presentation.ts'
 
 export {
   NarrationGate,
@@ -135,13 +158,26 @@ export const inject = ['slots', 'locale'] as const
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-context-layer: dictionaries')
   const service = new ContextLayerService()
+  // One registry handle per plugin instance, seeded with the built-in node and
+  // relation kinds. Components receive its read face as an ordinary prop, so no
+  // module-level state decides how a kind looks.
+  const presentation = createGraphPresentationRegistry()
 
   ctx.effect(() => ctx.reflect.provide('contextLayer', service), 'ui-context-layer: service')
 
   ctx.inject(['remote'], (scope: Context) => {
-    const remoteNs = (scope as unknown as { remote?: { schemaGateway?: unknown } }).remote
-    const graphClient = remoteNs?.schemaGateway
-      ? buildGraphDataClient(remoteNs.schemaGateway as never)
+    type SchemaGatewayRemote = {
+      getGraphData: (
+        opts?: SemanticGraphQuery,
+        scopeId?: string,
+      ) => Promise<RemoteResult<SemanticGraphData>>
+    }
+    const remote = (scope as unknown as {
+      remote?: { schemaGateway?: SchemaGatewayRemote }
+    }).remote
+    const schemaGateway = remote?.schemaGateway
+    const graphClient = schemaGateway
+      ? buildGraphDataClient(schemaGateway)
       : null
 
     const disposeOverlay = scope.slots.register({
@@ -149,7 +185,7 @@ export function apply(ctx: Context): void {
       id: 'context-layer-fullscreen',
       order: 1000,
       locale: NS,
-      inject: () => ({ service, graphClient }),
+      inject: () => ({ service, graphClient, presentation }),
     }, ContextLayerOverlay)
 
     return disposeOverlay

@@ -20,6 +20,7 @@ import {
   EventDefinitionSchema,
 } from '@deepseek-ai/dsh-semantic-layer'
 import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine'
+import { brandString } from '@deepseek-ai/dsh-brand'
 import type {
   TableSummary,
   EventSummary,
@@ -28,10 +29,11 @@ import type {
   CoverageStats,
   DomainEntry,
   Json,
-  GraphDataOpts,
-  GraphData,
-  GraphNode,
-  GraphEdge,
+  SemanticGraphQuery,
+  SemanticGraphData,
+  SemanticGraphNode,
+  SemanticGraphEdge,
+  SemanticGraphNodeId,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -239,92 +241,73 @@ export class SchemaGateway extends TypertRemoteService {
   }
 
   /**
-   * W10: Get graph data for the context-layer interactive relation graph.
-   * Returns nodes (tables, events, metrics) and edges (relations) from the
-   * SemanticLayerService's RelationGraph. Supports domain filtering, focus
-   * node with BFS depth, and optional metric inclusion.
+   * W10/W27: Get graph data for the semantic-graph view. Nodes come from the
+   * Semantic Layer's registry-driven projection (`ctx.schema.projectGraphNodes`
+   * — one contribution per registered kind, plus whatever nodes those kinds
+   * derive, so `concept` and any kind registered later enter the graph without a
+   * gateway change); edges come from the RelationGraph. Node/relation `kind` is
+   * OPEN (`string`); node ids are branded `SemanticGraphNodeId` at this Remote
+   * boundary. Supports domain filtering, focus with BFS depth, and optional
+   * metric inclusion.
    *
-   * evalPassRate is left undefined in this base implementation — it will be
-   * wired from the evidence-query service in a follow-up.
+   * `includeMetrics` (default false) leaves derived nodes out of the projection
+   * entirely — `metric` is the only derived kind the built-in kinds contribute,
+   * and skipping it also skips deriving it. Every stored kind is always
+   * included. The internal working sets use plain string ids (matching the
+   * projection + RelationGraph); ids are branded only when constructing the
+   * returned nodes/edges.
+   *
+   * evalPassRate is left undefined in this base projection — it will be wired
+   * from the evidence-query service in a follow-up.
    *
    * GA-GT1 Phase 5c: `scopeId` (β mode, optional) threads to
-   * `this.ctx.schema.getRelationGraph(scopeId)` (Phase 2 per-scope graph
-   * path); `undefined` → active scope graph (现状, preserved). Dormant until
-   * 5d — prod callers do not set a scope here yet.
+   * `this.ctx.schema.getRelationGraph(scopeId)` (Phase 2 per-scope graph path);
+   * `undefined` → active scope graph (现状, preserved). Node projection reads
+   * the active scope. Dormant until 5d — prod callers set no scope here yet.
    * @param opts - opts
    * @param scopeId - scopeId
    * @returns the result
    */
   @Remote('getGraphData')
-  getGraphData(opts?: GraphDataOpts, scopeId?: string): GraphData {
+  getGraphData(opts?: SemanticGraphQuery, scopeId?: string): SemanticGraphData {
     const domain = opts?.domain
     const focus = opts?.focus
     const depth = opts?.depth
     const includeMetrics = opts?.includeMetrics ?? false
 
-    // Collect all nodes from tables, events, and optionally metrics
-    const allNodes: GraphNode[] = []
+    // Registry-driven node projection (no hand-written per-kind loops). The
+    // flag reaches the projection instead of filtering its result, so a request
+    // that discards derived nodes never pays for deriving them; the domain
+    // filter applies to all kinds.
+    const allNodes: SemanticGraphNode[] = []
     const nodeIdSet = new Set<string>()
-
-    for (const t of loadTables(this.ctx.schema.semanticRoot)) {
-      const r = TableDefinitionSchema.safeParse(t.raw)
-      if (!r.success) continue
-      const def = r.data
-      if (domain && !def.domains.includes(domain)) continue
-      const node: GraphNode = {
-        id: def.table_name,
-        kind: def.kind,
-        label: def.table_name,
-        domains: [...def.domains],
-      }
-      allNodes.push(node)
-      nodeIdSet.add(node.id)
+    for (const proj of this.ctx.schema.projectGraphNodes({ includeDerived: includeMetrics })) {
+      if (domain && !proj.domains.includes(domain)) continue
+      allNodes.push({
+        id: brandString<SemanticGraphNodeId>(proj.id),
+        kind: proj.kind,
+        label: proj.label,
+        domains: [...proj.domains],
+      })
+      nodeIdSet.add(proj.id)
     }
 
-    for (const e of loadEvents(this.ctx.schema.semanticRoot)) {
-      const r = EventDefinitionSchema.safeParse(e.raw)
-      if (!r.success) continue
-      const def = r.data
-      if (domain && !def.domains.includes(domain)) continue
-      const node: GraphNode = {
-        id: def.name,
-        kind: 'event',
-        label: def.name,
-        domains: [...def.domains],
-      }
-      allNodes.push(node)
-      nodeIdSet.add(node.id)
-    }
-
-    if (includeMetrics) {
-      for (const m of loadMetricDefinitions(this.ctx.schema.semanticRoot)) {
-        if (domain && !m.domains.includes(domain)) continue
-        const node: GraphNode = {
-          id: m.name,
-          kind: 'metric',
-          label: m.name,
-          domains: [...m.domains],
-        }
-        allNodes.push(node)
-        nodeIdSet.add(node.id)
-      }
-    }
-
-    // Collect edges from the relation graph
+    // Collect edges from the relation graph (only between projected nodes).
     const relationGraph = this.ctx.schema.getRelationGraph(scopeId)
-    const allEdges: GraphEdge[] = []
-    const edgeSet = new Set<string>() // dedupe "A->B" pairs
+    const allEdges: SemanticGraphEdge[] = []
+    const edgeSet = new Set<string>() // dedupe "A->B:type" triples
 
     for (const node of allNodes) {
-      const related = relationGraph.getRelated(node.id)
+      const source = node.id as string
+      const related = relationGraph.getRelated(source)
       for (const edge of related) {
         if (!nodeIdSet.has(edge.targetId)) continue
-        const edgeKey = `${node.id}->${edge.targetId}:${edge.type}`
+        const edgeKey = `${source}->${edge.targetId}:${edge.type}`
         if (edgeSet.has(edgeKey)) continue
         edgeSet.add(edgeKey)
         allEdges.push({
           source: node.id,
-          target: edge.targetId,
+          target: brandString<SemanticGraphNodeId>(edge.targetId),
           type: edge.type,
           ...(edge.on ? { on: edge.on } : {}),
         })

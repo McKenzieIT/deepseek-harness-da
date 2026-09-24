@@ -6,14 +6,23 @@
  * @module @deepseek-ai/dsh-semantic-layer/src/kinds/event-kind
  */
 import { EventDefinitionSchema, type EventDefinition } from '../types.ts'
-import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem } from '../registry.ts'
+import type { DataSourceKindPlugin, RelationDef, CriticFields, CorpusItem, GraphNodeProjection } from '../registry.ts'
 import { isPlainObject } from '../corpus.ts'
+import { deriveMetricRelations, extractMetricsFromEvent, metricGraphNode, projectMetricCorpusItem } from '../metrics.ts'
 
 /** eventKindPlugin */
 export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
   kind: 'event',
   schema: EventDefinitionSchema,
   storageDir: 'events',
+
+  // An event's inline `metrics:` block derives one virtual `metric` node each.
+  derivedNodes: {
+    derive: extractMetricsFromEvent,
+    toGraphNode: metricGraphNode,
+    relations: deriveMetricRelations,
+    toCorpusItem: projectMetricCorpusItem,
+  },
 
   getId(raw) {
     return typeof raw.name === 'string' ? raw.name : undefined
@@ -59,6 +68,10 @@ export const eventKindPlugin: DataSourceKindPlugin<EventDefinition> = {
     return {
       eventParams: def.params_fields,
     }
+  },
+
+  toGraphNode(def): GraphNodeProjection {
+    return { id: def.name, kind: 'event', label: def.name, domains: [...def.domains] }
   },
 
   relations(def): RelationDef[] {

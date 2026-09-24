@@ -685,6 +685,24 @@ getDanglingDomainRefs(): string[]
 loadRetrievalCorpusAll(): CorpusItem[]
 
 /**
+ * Registry-driven semantic-graph node projection (W27): every registered
+ * kind's `toGraphNode` applied to each of its loaded definitions, followed by
+ * the nodes those kinds derive through their declared `derivedNodes`
+ * contributor (`metric` for `table` and `event`). Each kind contributes a node
+ * or explicitly declines (`null`). Iterating the registry, rather than
+ * hand-written per-kind loops, is what lets a kind registered later reach the
+ * graph — with derived nodes included — without editing the projection.
+ *
+ * Uncached: it re-reads every registered kind's definitions from the ACTIVE
+ * scope root on each call. The Schema Gateway threads a per-request `scopeId`
+ * only to the relation-graph edge source, matching pre-W27 node-load behavior.
+ * @param opts - `includeDerived` (default `true`) projects each kind's derived
+ *  nodes; pass `false` to skip deriving nodes the caller discards.
+ * @returns one projection per graph node: every registered kind's own nodes, then their derived nodes.
+ */
+projectGraphNodes(opts: { readonly includeDerived?: boolean } = {}): GraphNodeProjection[]
+
+/**
  * Mount a live-engine schema provider (P6b Q3 deferred; follow-up mounts the real one).
  * @param provider - the provider to delegate discover/describe/sample to, or undefined to clear.
  */

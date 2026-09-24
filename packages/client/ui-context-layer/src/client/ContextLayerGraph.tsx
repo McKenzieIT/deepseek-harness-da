@@ -6,10 +6,17 @@
  *  1. Mount a G6 Graph instance into a container div.
  *  2. Configure combo-force layout (domain clusters as combos).
  *  3. Handle semantic-zoom LOD switching (far/mid/near) on zoom events.
- *  4. Apply node/edge/combo styles from graph-styles.ts.
+ *  4. Map resolved presentations onto G6 node/edge styles, and combo styles
+ *     from graph-styles.ts.
  *  5. Expose click/double-click callbacks for detail panel + focus navigation.
  *  6. Support domain filter (hide/show combos + their nodes).
  *  7. Render minimap plugin.
+ *
+ * Node and relation kinds reach the canvas only through the presentation
+ * registry: the component reads `kind`/`type` as opaque registry keys and never
+ * interprets a table, metric, or concept field itself. The resolved fill rides
+ * on the G6 node payload so the diagnostic overlay can restore it without
+ * re-deriving it from business data (W27).
  *
  * Does NOT handle: conversation panel, animation layer, evidence overlay,
  * or any W11 features.
@@ -23,11 +30,14 @@ import {
   type ZoomLevel,
 } from './graph-layout.ts'
 import {
+  NODE_SIZE,
   nodeStyle,
   edgeStyle,
   comboStyle,
 } from './graph-styles.ts'
-import type { GraphData, GraphNode, GraphEdge } from './types.ts'
+import type { GraphPresentationReader } from './graph-presentation.ts'
+import type { ContextLayerTranslate } from './locales.ts'
+import type { SemanticGraphData as GraphData, SemanticGraphNode as GraphNode, SemanticGraphEdge as GraphEdge } from '@deepseek-ai/dsh-schema-gateway/types'
 
 export interface ContextLayerGraphProps {
   /** Graph data (nodes + edges) from getGraphData RPC. */
@@ -44,12 +54,21 @@ export interface ContextLayerGraphProps {
   width?: number | string
   /** Container height (defaults to 100%). */
   height?: number | string
+  /** Resolves the node and relation kinds present in `data`. */
+  presentation: GraphPresentationReader
+  /** Localized copy for the resolved kind labels. */
+  t: ContextLayerTranslate
 }
 
 /**
  * Transform GraphData into G6-compatible data structure with combos.
  */
-function toG6Data(data: GraphData, domainFilter?: string) {
+function toG6Data(
+  data: GraphData,
+  presentation: GraphPresentationReader,
+  t: ContextLayerTranslate,
+  domainFilter?: string,
+) {
   // Build domain set for combo generation
   const domainSet = new Set<string>()
   for (const node of data.nodes) {
@@ -82,29 +101,41 @@ function toG6Data(data: GraphData, domainFilter?: string) {
   }))
 
   // Map nodes with primary domain → combo assignment
-  const nodes = filteredNodes.map(n => ({
-    id: n.id,
-    label: n.label,
-    // ui-context-layer-3: when a domainFilter is active, assign every filtered
-    // node to the filter's combo — a node whose domains[0] differs from the
-    // filter domain would otherwise reference an uncreated combo.
-    combo: `combo-${domainFilter ?? n.domains[0] ?? 'unknown'}`,
-    data: {
-      kind: n.kind,
-      evalPassRate: n.evalPassRate,
-      domains: n.domains,
-    },
-    style: nodeStyle(n.kind, n.evalPassRate),
-  }))
+  const nodes = filteredNodes.map((n) => {
+    const resolved = presentation.resolveNode(n, t)
+    return {
+      id: n.id,
+      label: n.label,
+      // ui-context-layer-3: when a domainFilter is active, assign every filtered
+      // node to the filter's combo — a node whose domains[0] differs from the
+      // filter domain would otherwise reference an uncreated combo.
+      combo: `combo-${domainFilter ?? n.domains[0] ?? 'unknown'}`,
+      // The payload carries the RESOLVED fill, not the kind: useOverlayMode
+      // restores it when leaving a diagnostic overlay, so the animation layer
+      // never has to re-resolve a kind. evalPassRate is the overlay's own
+      // subject and stays.
+      data: {
+        fill: resolved.style.fill,
+        evalPassRate: n.evalPassRate,
+        domains: n.domains,
+      },
+      style: nodeStyle(resolved.style),
+    }
+  })
 
-  // Map edges
-  const edges = filteredEdges.map((e, idx) => ({
-    id: `edge-${idx}`,
-    source: e.source,
-    target: e.target,
-    data: { type: e.type, on: e.on },
-    style: edgeStyle(false),
-  }))
+  // Map edges. `labelText` is the relation's accessible label: the kind's
+  // localized name when one is registered, else its raw kind string, so an
+  // unregistered relation kind is still named on the canvas (W27).
+  const edges = filteredEdges.map((e, idx) => {
+    const resolved = presentation.resolveRelation(e, t)
+    return {
+      id: `edge-${idx}`,
+      source: e.source,
+      target: e.target,
+      data: { type: e.type, on: e.on },
+      style: { ...edgeStyle(resolved.style), labelText: resolved.label },
+    }
+  })
 
   return { nodes, edges, combos }
 }
@@ -122,7 +153,7 @@ function applyLOD(graph: Graph, level: ZoomLevel): void {
     id: node.id,
     style: {
       labelText: lod.showLabel ? (node as { label?: string }).label ?? '' : '',
-      size: 32 * lod.nodeScale,
+      size: NODE_SIZE * lod.nodeScale,
     },
   }))
   graph.updateNodeData(nodeUpdates)
@@ -149,6 +180,8 @@ export function ContextLayerGraph({
   onGraphReady,
   width = '100%',
   height = '100%',
+  presentation,
+  t,
 }: ContextLayerGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<Graph | null>(null)
@@ -199,7 +232,7 @@ export function ContextLayerGraph({
       node: {
         type: 'circle',
         style: {
-          size: 32,
+          size: NODE_SIZE,
           labelPlacement: 'bottom',
           labelFontSize: 12,
         },
@@ -261,7 +294,7 @@ export function ContextLayerGraph({
     const graph = graphRef.current
     if (!graph || !data) return
 
-    const g6Data = toG6Data(data, domainFilter)
+    const g6Data = toG6Data(data, presentation, t, domainFilter)
     graph.setData(g6Data)
     // ucl-9: guard the post-render LOD apply against unmount / data-change
     // races. The init effect's cleanup calls graph.destroy() + nulls
@@ -282,7 +315,11 @@ export function ContextLayerGraph({
     return () => {
       cancelled = true
     }
-  }, [data, domainFilter])
+    // `t` is a fresh reference per locale revision and stable within one, so
+    // listing it re-labels the canvas on a locale switch without churning on
+    // unrelated re-renders. `presentation` is the handle the plugin creates once
+    // in apply.
+  }, [data, domainFilter, presentation, t])
 
   // Handle container resize
   useEffect(() => {
