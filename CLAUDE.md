@@ -14,6 +14,12 @@ Data Agent 工作项记录在本 Fork 的 GitHub Issues 中，不在 upstream �
 
 领域文档采用仅覆盖 Fork Data Agent 内容的多上下文布局；upstream DSH 不纳入该领域地图。详见 `docs/agents/domain.md`。
 
+### GUI 演示 GIF
+
+本 Fork **不要求** PR 附演示 GIF。上游 `.agents/skills/record-browser-gif/SKILL.md` 描述里的 "MUST include a GIF" 在本 Fork 降级为**可选**：仅当任务明确要求录制时才用。用户指令优先级高于 skill，本条覆盖该 skill 的 MUST 语义。
+
+覆盖原因：rendered 结果改由 keyless 全栈 e2e、截图等机器可验证证据承载；GIF 的因果单次执行证据对本 Fork review 流程非必需。skill 本身保留（上游 DSH 资产，经 upstream-sync 进入；删除会持续触发 `drop-fork` 分歧裁决），仅覆盖其 MUST 语义，不动上游文件。
+
 ## Eval 实验记录规范
 
 **每次 eval run 必须记录**。LLM 输出不可重现，未记录的实验结果等于不存在。

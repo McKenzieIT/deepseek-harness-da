@@ -30,7 +30,7 @@ blocked_by: []
 - 未注册专用 presentation 的 node/relation kind 使用通用展示，并保留可访问 label 与详情。
 - focus 不存在时返回空子图；domain/group filtering 与当前 bounded traversal 行为保持明确。
 - focused Host、Remote 和 Client tests 覆盖有效及无效投影；组件 fake data 不能替代 Remote 装配测试。
-- keyless Web snapshot 覆盖开放 kind 与 concept node；从本票真实 Web server 和 management preset flow 录制 concept 可见的 GIF。
+- keyless Web snapshot 覆盖开放 kind 与 concept node（由 `apps/web/tests/semantic-graph-remote.e2e.ts` 全栈 Remote 往返机器验证）。演示 GIF 在本 Fork 不要求（见 `CLAUDE.md` → Agent skills → GUI 演示 GIF 覆盖）。
 
 ## Out of scope
 
@@ -123,4 +123,4 @@ PR #185 merge 前由协调 Session 跑独立 review（实现 agent 不自审）�
 
 验证：532 测试通过（含 W26 management-context）；typecheck 0 error；doc-sync 43/43；CI `node 24 / static` 绿（含 cordis catalog + inspect catalog）。剩余 CI 红全为 `prepare-ci-bubblewrap.sh` curl 404 基础设施问题（master 同红，归 PR #183 / Repo Infra T29），非 W27。
 
-**GIF**：按 `.agents/skills/record-browser-gif` 规则，改 GUI 的 PR 应附演示 GIF。本票 concept 到达客户端的主张已由 keyless e2e 机器验证（比 GIF 更强）；GIF 作为可视化演示 deferred，从真实 server 录制为后续项。未假装已完成。
+**GIF**：本 Fork 不要求 PR 演示 GIF（`CLAUDE.md` → Agent skills → GUI 演示 GIF 已覆盖上游 `record-browser-gif` skill 的 MUST 语义）。本票 concept 到达客户端的主张由 keyless 全栈 e2e（`apps/web/tests/semantic-graph-remote.e2e.ts`）机器验证——比 GIF 更强。上游 skill 文件原样保留（删除会触发 upstream-sync `drop-fork` 持续分歧），仅在 fork 指令层覆盖其 MUST。
