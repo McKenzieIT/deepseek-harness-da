@@ -201,6 +201,8 @@ node --import tsx/esm packages/eval/eval-cli/bin/compare.ts <run_id_A> <run_id_B
 Resolves: [<ticket>](link)
 ```
 
+harness 模式从已安装的 `@deepseek-ai/dsh-data-agent` 包目录解析随包 preset 的裸插件行。调用方提供自定义 preset 目录时，裸插件行改从 eval-cli 宿主 checkout 解析。
+
 未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-eval-cli` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
 
 <a id="dev-note"></a>

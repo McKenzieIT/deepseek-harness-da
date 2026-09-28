@@ -197,11 +197,13 @@ After each eval run, record the results in `wayfinder/data-agent/research/experi
 Resolves: [<ticket>](link)
 ```
 
+Harness mode resolves bare plugin rows in the shipped presets from the installed `@deepseek-ai/dsh-data-agent` package directory. A caller-supplied preset directory instead resolves bare rows from the eval-cli host checkout.
+
 No runtime invariant companion is published because `@deepseek-ai/dsh-eval-cli` owns no independently observable relationship that can diverge from its runtime state.
 
 ## Dev Note
 
-None.
+Harness mode resolves bare plugin rows in the shipped presets from the installed `@deepseek-ai/dsh-data-agent` package directory. A caller-supplied preset directory instead resolves bare rows from the eval-cli host checkout.
 
 
 ## Model Experience

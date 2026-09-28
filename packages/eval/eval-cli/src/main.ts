@@ -12,7 +12,13 @@ import { parseArgs } from 'node:util'
 import { resolve, join, dirname } from 'node:path'
 import { readdirSync, existsSync, readFileSync } from 'node:fs'
 
-function findRepoRoot(): string {
+/**
+ * Walk up from the cwd for the checkout root, identified by a directory
+ * holding both `packages` and `examples`; falls back to the cwd itself.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ * @returns the resolved repository root.
+ */
+export function findRepoRoot(): string {
   let dir = resolve('.')
   for (let i = 0; i < 10; i++) {
     if (existsSync(join(dir, 'packages')) && existsSync(join(dir, 'examples'))) return dir
@@ -33,7 +39,11 @@ import type { RunConfig } from '@deepseek-ai/dsh-eval-runner'
 import { boot, resolveQueryWaitSeconds } from './context.ts'
 import { formatReport } from './report.ts'
 
-interface CliArgs {
+/**
+ * The parsed CLI surface driving one eval run.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ */
+export interface CliArgs {
   cases: string
   schema: string
   output: string
@@ -70,11 +80,25 @@ interface CliArgs {
   scopeId: string
 }
 
-function str(v: string | boolean | undefined, fallback: string): string {
+/**
+ * Coerce a `parseArgs` value to a string, since `strict: false` lets a
+ * string-typed option arrive as a boolean.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ * @param v - the raw parsed value.
+ * @param fallback - the value to use when `v` is not a string.
+ * @returns `v` when it is a string, else `fallback`.
+ */
+export function str(v: string | boolean | undefined, fallback: string): string {
   return typeof v === 'string' ? v : fallback
 }
 
-function parseCliArgs(): CliArgs {
+/**
+ * Parse `process.argv` into {@link CliArgs}, printing usage and exiting for
+ * `--help`, a missing `--cases`, or an invalid `--responder`/`--variant`.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ * @returns the parsed arguments.
+ */
+export function parseCliArgs(): CliArgs {
   const { values } = parseArgs({
     options: {
       cases: { type: 'string' },
@@ -161,12 +185,22 @@ function parseCliArgs(): CliArgs {
   }
 }
 
-function formatToday(): string {
+/**
+ * Today's date in the `YYYYMMDD` form the time-param extractor expects,
+ * read from the local calendar.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ * @returns the formatted date.
+ */
+export function formatToday(): string {
   const d = new Date()
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
 }
 
-function printUsage(): void {
+/**
+ * Print the `dsh-eval` usage block to stdout.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ */
+export function printUsage(): void {
   console.log(`
   dsh-eval — standalone eval CLI runner
 
@@ -215,7 +249,15 @@ function printUsage(): void {
 `)
 }
 
-function globCasePaths(caseDir: string, caseFilter: string | null): string[] {
+/**
+ * Collect the case files in a directory, keeping only `<name>_<digits>`
+ * YAML/JSON names, and exiting when an explicit `--case` filter matches none.
+ * @internal Exported for eval-cli's own tests; not part of the package API.
+ * @param caseDir - the directory to read.
+ * @param caseFilter - a substring every returned name must contain, or null for all.
+ * @returns the matching case file paths, sorted.
+ */
+export function globCasePaths(caseDir: string, caseFilter: string | null): string[] {
   const files = readdirSync(caseDir)
     .filter(f => /\.(yaml|yml|json)$/.test(f))
     .filter(f => /^[a-z0-9]+(_[a-z0-9]+)*_\d+\./i.test(f))
