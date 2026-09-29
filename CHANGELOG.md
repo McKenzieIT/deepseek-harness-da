@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- DA 专属必需 CI 检查（ci-da.yml + scripts/da-owned-packages.ts）：只对 upstream/master 不含的 fork 自有包（实测 66 个）跑 typecheck+test，使合并判据免疫上游基础设施债（bubblewrap 404 / 缺 secret / 16 核预算 / 上游自碎测试）；同时给 ci.yml 止血（bubblewrap 三 job 移出必需判据 + 非致命化）— T29/CB-5
 - master-src pre-push gate (verify-no-production-src-on-master) 扩展覆盖 apps/.../src、native/.../src、python/.../src、scripts/ (原仅 packages/.../src) — cleanup ①
 - master-src gate 的 CI 直接推送守卫(no-production-src-on-master.yml):push 到 master 时跑 gate,抓 --no-verify/无 lefthook 绕过直推 src(reactive,PR 合并跳过) — cleanup ②
 - (b) critique_sql_tool + evaluate_sql_quality da-owned Consumer tools (Phase 1) — ship the folded-regex SQL critic as model-facing Cordis Consumer tools so F2 (same-source gate) is satisfiable: the model can re-critique a corrected SQL (after TABLE_NOT_FOUND) → `last_sql` updates → F2 passes → execution → rows. The tools probe `ctx.get('criticCtx')` (a `CriticCtxService` the phase-gate registers) for the per-agent candidateTables/eventParams/partitionCols. `critic_tools_registered: true` re-tightens the GENERATION gate (requires last_critique ≥ 0.6 + last_quality ≥ 60). Phase 2 (full 3-layer sqlglot critic) deferred — tool-critique-sql + tool-evaluate-sql-quality + phase-gate captureToolData (last_sql from critique_sql_tool's `sql`)
