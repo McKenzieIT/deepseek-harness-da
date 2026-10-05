@@ -1,5 +1,8 @@
 # GA-FORK-CI: verify-translation-pairing debt (the 1 remaining red node-24 gate)
 
+**Type**: task  ·  **Phase**: misc  ·  **Status**: resolved (2026-09-07, PR #108)
+**Parent**: [GA-FORK-CI](GA-FORK-CI-green.md)
+
 Branch: fix/ga-fork-ci-translation-pairing (sessions 3-6; off origin/master @ `5ef3872533` = PR #107 tracker-s5). **PR #102 (session 3) + PR #104 (session 4) + PR #106 (session 5) + PR #108 (session 6) MERGED to master** (admin-merge Option B). Session 6 landed the final 6 (packages/goal 2 + packages/query 1 + docs/agents 3) + recorded; corpus debt 6→0 (0 OOS) — **CLEARED**. Local worktree + branches cleaned up after each session. Progress + method: `.tmp/audit/fix-translation-session6-status.md` (main tree). Earlier records: `.tmp/audit/fix-translation-session5-status.md`, `.tmp/audit/fix-translation-session4-status.md`, `.tmp/audit/fix-translation-session3-status.md`, `.tmp/audit/fix-translation-session2-status.md`.
 
 ## Question

@@ -1,6 +1,6 @@
 # GA-GRILL2 — i18n / prompt-templating 架构（先 grilling 再开票）
 
-**Type**: grilling  ·  **Phase**: misc  ·  **Status**: **Grilled**（2026-09-01 Kind 2；**2026-09-03 Kind 1**）→ 产出 Kind 2 实施票 GA-I18N-1~5 + 独立优化票 GA-I18N-R1；**Kind 1 实施方向 won't-do，研究诉求转 [GA-EXP5](GA-EXP5-language-correlation.md)**
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: resolved（2026-09-01 Kind 2；**2026-09-03 Kind 1**）→ 产出 Kind 2 实施票 GA-I18N-1~5 + 独立优化票 GA-I18N-R1；**Kind 1 实施方向 won't-do，研究诉求转 [GA-EXP5](GA-EXP5-language-correlation.md)**
 **Source**: [audit report](../../research/generalization-audit-2026-08-31.md) — C3+H7 / arch G2 · **critical**
 **Grilling prompt**: [research/grill-2-i18n.md](../../research/grill-2-i18n.md)
 **Scope narrowing**: 只支持中英双语（zh/en），不含日文。

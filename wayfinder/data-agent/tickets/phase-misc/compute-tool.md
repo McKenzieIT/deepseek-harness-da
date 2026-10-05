@@ -4,6 +4,7 @@
 
 **Type**: task (AFK)
 **Phase**: misc
+**Status**: resolved (2026-08-26)
 **Assignee**: claude (claimed 2026-08-26)
 **Blocked by**: none (all infra resolved 2026-08-26)
 **Blocks**: G1b DELIVERY scoring (execution-match needs compute path)

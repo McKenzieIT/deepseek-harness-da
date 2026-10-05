@@ -2,6 +2,9 @@
 
 > Surfaced + partially resolved by the 2026-08-21 verification sweep (15-agent read-only review workflow + inline build/boot/conversation probes).
 
+**Type**: task  ·  **Phase**: misc  ·  **Status**: resolved (2026-10-06, reconciled by DA-MAP1)
+**Assignee**: unclaimed
+
 ## Question
 
 What remains before `dsh-data-agent` boots a **full data-agent conversation** (NL→SQL→ODPS→delivery) end-to-end, after the 2026-08-21 sweep fixed the build + the LLM provider wiring?
@@ -22,3 +25,13 @@ What remains before `dsh-data-agent` boots a **full data-agent conversation** (N
 ## Resolution
 
 Not resolved — records the verified remaining gap. Build + LLM-wiring fixes (#1, #2) are applied in-env (backups: `settings.yaml.bak-llmfix`, `profiles/{headless,web}/cordis.patch.yml.bak-llmfix`); #1 is an uncommitted working-tree code fix. Tool-package shipping (#3) + LLM-wiring persistence (#4) are follow-up. **#3 is the hard gate** for a full data-agent conversation; #1/#2 already make the harness boot + converse via the da LLM (headless PONG proven, web boots).
+
+### Reconciliation (2026-10-06, by [DA-MAP1](DA-MAP1-map-hygiene.md))
+
+本票此前无 `**Status**` 字段，正文 Resolution 记「Not resolved」。逐项核实后**两条 remaining 均已关闭**，故补 Status = resolved：
+
+- **#3 工具包占位（本票自述的 hard gate）** —— 已不成立。实测 `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` 里 `tool-query-data`、`tool-load-{table,event}-definition`、`tool-present-{decomposition,table}`、`tool-suggest-followups`、`tool-compute`、`tool-critique-sql`、`tool-evaluate-sql-quality` **全部已解注释并带 `name:`**，全文件 `name TBD` **零命中**。各工具的 resolving ticket 见 [data-agent-tool-packages-shipping](data-agent-tool-packages-shipping.md) 的清单表。
+- **#4 LLM-wiring 持久化** —— 由 [dashscope-default-llm-plugin](dashscope-default-llm-plugin.md) resolved（路由重命名 `dashscope`→`aga`，默认 profile 纯插件化用 DashScope，不靠 settings 外科手术）。
+- **#1/#2（build blocker + provider wiring）** 本票原文已记为 in-env 修好；build 侧的持久化归 [host-typecheck-wiring](host-typecheck-wiring.md)。
+
+本票作为 2026-08-21 验证 sweep 的缺口记录保留，不再是活的前沿项。

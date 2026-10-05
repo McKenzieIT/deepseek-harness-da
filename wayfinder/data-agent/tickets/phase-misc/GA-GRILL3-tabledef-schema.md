@@ -1,6 +1,6 @@
 # GA-GRILL3 — TableDefinition schema 去 K11/MaxCompute/中文默认（先 grilling 再开票）
 
-**Type**: grilling  ·  **Phase**: misc  ·  **Status**: **Grilled**（2026-09-01）→ 产出 GA-EXP1 实验票
+**Type**: grilling  ·  **Phase**: misc  ·  **Status**: resolved（2026-09-01 grilled → 产出 GA-EXP1 实验票）
 **Source**: [audit report](../../research/generalization-audit-2026-08-31.md) — H3 · **high**
 **Grilling prompt**: [research/grill-3-schema.md](../../research/grill-3-schema.md)
 

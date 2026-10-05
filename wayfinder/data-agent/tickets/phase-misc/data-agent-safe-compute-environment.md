@@ -4,6 +4,7 @@
 
 **Type**: research (AFK)
 **Phase**: misc
+**Status**: resolved (2026-08-26)
 **Assignee**: (unclaimed)
 **Blocked by**: none
 **Blocks**: `compute` tool ship（[present-delivery-tools](present-delivery-tools.md) Decision #3）

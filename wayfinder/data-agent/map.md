@@ -2,7 +2,13 @@
 
 > 本地 Markdown tracker（wayfinder skill 默认；未显式提供 GitHub issue tracker）。子 ticket 在 `tickets/`，研究笔记在 `research/`，session prompt 在 `prompts/`（已失效的在 `archive/prompts/`）。
 >
-> 本 map 是**索引，不是存储**：每条决策只记一行 gist + 票链接，详情在它自己的票或研究笔记里。**本 map 不镜像 open / blocked / frontier / assignee** —— 每张票的 `**Status**` 字段是其状态的唯一来源（查 frontier 的命令见 [tickets/README.md](tickets/README.md)）。
+> 本 map 是**索引，不是存储**：每条决策只记一行 gist + 票链接，详情在它自己的票或研究笔记里。**本 map 不镜像 open / blocked / frontier / assignee** —— 每张票的 `**Status**` 字段是其状态的唯一来源。查 frontier 用机械查询而非读本 map——
+> ```sh
+> # 列出 Status 未规范读作「已关闭」的票（= 当前前沿 + Status 写法待修的票，实测 46）
+> grep -rLiE '\*\*Status\*\*:?[^A-Za-z]*(resolved|closed|archived|dropped|folded|superseded|shipped|implemented|grilled|reverted)' \
+>   --include='*.md' wayfinder/data-agent/tickets | grep -vE 'README|调用文档'
+> ```
+> ticket 索引（按 phase 分层 + 取票流程）在 [tickets/README.md](tickets/README.md)。
 
 ## Destination
 
