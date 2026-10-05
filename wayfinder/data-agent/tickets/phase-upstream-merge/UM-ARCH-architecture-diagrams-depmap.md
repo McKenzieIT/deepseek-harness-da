@@ -3,7 +3,7 @@
 **Type**: task · **Status**: resolved（2026-09-09 regen-from-synced；2026-09-10 UM10 补一次 regen）· **Phase**: upstream-merge
 **Blocking**: UM14（权威 dsh 图基于 synced latest）
 **Foundational for**: UM15（impact analyzer 在图上推理）、UM-ADAPT（adaptive 守门用依赖图的"对齐状态"）
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase B）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase B）
 
 ## Question
 
@@ -13,9 +13,9 @@
 
 1. `gen-architecture-graph.ts`——从代码（包结构 + 跨包 import + 5 modular seam + @Remote assembly）生成两张 Mermaid + 依赖图。跟 repo 现有 `gen-module-graph.ts`/`gen-doc-graphs.ts`/`verify-module-graph.ts` 同 pattern。
 2. `verify-architecture-graph.ts`——图与代码不漂移则 fail。
-3. **依赖图**（data-agent→upstream）：每个 data-agent 组件 → upstream seam/包 → 契约（public / zombie violation）→ 对齐状态。v1 草表见 `UM-flow-2026-09-08.md`（含 R-DA-CLIENT-RUNTIME-DECOMMISSION 的 zombie violation + workspace-files 待采纳）。
+3. **依赖图**（data-agent→upstream）：每个 data-agent 组件 → upstream seam/包 → 契约（public / zombie violation）→ 对齐状态。v1 草表见 `research/um-flow-2026-09-08.md`（含 R-DA-CLIENT-RUNTIME-DECOMMISSION 的 zombie violation + workspace-files 待采纳）。
 4. **update-on-change gate**：每次 data-agent 或 upstream 更新 regen；gate 进 CI（`check:ci:static` 或新 gate）+ pre-push。像 `verify-module-graph`。
-5. 用 gen 脚本生成的权威图替换 `UM-flow-2026-09-08.md` 里的手画 v1 草图。
+5. 用 gen 脚本生成的权威图替换 `research/um-flow-2026-09-08.md` 里的手画 v1 草图。
 
 ## Deliver
 

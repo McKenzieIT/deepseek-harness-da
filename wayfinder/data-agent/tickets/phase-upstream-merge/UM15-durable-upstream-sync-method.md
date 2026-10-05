@@ -3,7 +3,7 @@
 **Type**: grilling→prototype · **Status**: **resolved (2026-09-15)** · **Phase**: upstream-merge
 **Was blocking**: PR #130 final push, CI confirmation, merge, and branch cleanup — all four satisfied, see 收口 (2026-09-15)
 **Serves**: demand ③——后续每次 upstream 更新快速定位"哪里要变"+ 生成新票
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase C，可与验证/PR 并行）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase C，可与验证/PR 并行）
 
 ## Question
 

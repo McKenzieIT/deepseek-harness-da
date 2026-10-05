@@ -73,7 +73,7 @@
 
 ## 七、起手 checklist
 
-1. Read 本 prompt + `tickets/phase-upstream-merge/UM-flow-2026-09-08.md`（尤其末尾 2026-09-10 Phase C 段）+ UM12 票（22 门四类清单）+ UM10 Resolution（证据基线，勿重导）。
+1. Read 本 prompt + `research/um-flow-2026-09-08.md`（尤其末尾 2026-09-10 Phase C 段）+ UM12 票（22 门四类清单）+ UM10 Resolution（证据基线，勿重导）。
 2. 核 `ecaa56c848` / `cc9fc6623e` 两 tip + 两树状态（resync：tracked 0 / untracked 84；master：干净）。
 3. 确认 `PATH="/usr/local/bin:$PATH"` → `node -v` = v24.15.0。
 4. **起 4 个 subagent（S1–S4）并行**，每个都要在 prompt 里带上第三节的并行铁律（尤其「只读、不 build、不 commit」）。

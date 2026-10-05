@@ -4,7 +4,7 @@
 **Blocked by**: UM14（synced base `8112743d69`）、UM16
 **Blocks**: UM10（typecheck-green gate）
 **Related**: UM-APIPROXY-REMOVAL-CLIENT-TYPE-ANALYSIS（research 票，本票是其 Adaptive A 分支）、R-DA-CLIENT-RUNTIME-DECOMMISSION（zombie `client/runtime`——**不同域**，本票是 `client/connection`，不重叠）
-**Flow**: 见 `UM-flow-2026-09-08.md`
+**Flow**: 见 `research/um-flow-2026-09-08.md`
 
 ## Question
 

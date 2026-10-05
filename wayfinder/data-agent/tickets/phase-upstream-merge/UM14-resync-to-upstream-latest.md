@@ -2,7 +2,7 @@
 
 **Type**: task (multi-session) · **Status**: resolved（2026-09-08/09，synced base `8112743d69`）· **Phase**: upstream-merge
 **Blocking**: 无（UM13 research 已完成，可直接启动）
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase A）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase A）
 
 ## Question
 

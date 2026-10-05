@@ -4,7 +4,7 @@
 **Blocked by**: UM14（synced base `8112743d69` 引入 `4f00a8b82a refactor(api): remove ApiProxy package`）
 **Blocks**: UM10（typecheck-green gate——325 个 client/data type error 卡它）
 **Related**: UM4（apiproxy-rehome-results-rpc-remote——范围窄到 results-RPC 2 个孤儿文件，本票不重叠）、R-DA-CLIENT-RUNTIME-DECOMMISSION（zombie `client/runtime`，不同域——本票是 `host/apiproxy` removal fallout）、UM16（root-entry fix 解 mask 后露出本层）
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase B-clear / Phase C）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase B-clear / Phase C）
 
 ## Question
 

@@ -131,7 +131,7 @@ pnpm run check:ci:static
 
 ## 七、起手 checklist
 
-1. Read 本 prompt + [`UM-flow-2026-09-08.md`](../tickets/phase-upstream-merge/UM-flow-2026-09-08.md) 末尾 + [UM12](../tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) Resolution(终态 27/18 + 5 门待办表)+ [UM-MERGE-INTEGRITY](../tickets/phase-upstream-merge/UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) + [UM15 Resolution](../tickets/phase-upstream-merge/UM15-durable-upstream-sync-method.md) + [`research/um15-durable-sync-design-2026-09-10.md`](../research/um15-durable-sync-design-2026-09-10.md)。
+1. Read 本 prompt + [`research/um-flow-2026-09-08.md`](../research/um-flow-2026-09-08.md) 末尾 + [UM12](../tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) Resolution(终态 27/18 + 5 门待办表)+ [UM-MERGE-INTEGRITY](../tickets/phase-upstream-merge/UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) + [UM15 Resolution](../tickets/phase-upstream-merge/UM15-durable-upstream-sync-method.md) + [`research/um15-durable-sync-design-2026-09-10.md`](../research/um15-durable-sync-design-2026-09-10.md)。
 2. **核 `a469c899bd` 两 tip + 两树状态**(resync:0 行;master:0 行)。⚠ **核 symlink**:`git -C /Users/mckenzie/workspace/dsh-resync ls-files -s | awk '$1=="120000"{print $4}'` + 逐个 `[ -L ]`。本 session 修过 `core.symlinks=true`(两树共享 `.git/config`),但**新 checkout 会回退** —— 若坏,跑:
    ```sh
    git config core.symlinks true

@@ -4,7 +4,7 @@
 **Assignee**: session 2026-09-12 post-uism-apply（done）
 **Blocking**: UM-ARCH（依赖图给"对齐状态"）+ UM14（synced base，分析 data-agent vs latest）
 **Feeds**: UM16 + R-DA-CLIENT-RUNTIME-DECOMMISSION + R-DA-UI-PRESENTER-COMPOSITION 的改造子步
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase B）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase B）
 
 ## Question
 

@@ -115,7 +115,7 @@ Decision 1（staleness 跑哪）/ 2（cadence 阈值）/ 5（先修 SEAM_MANIFES
 
 ## 七、起手 checklist
 
-1. Read 本 prompt + [`UM-flow-2026-09-08.md`](../tickets/phase-upstream-merge/UM-flow-2026-09-08.md) 末尾（2026-09-14 第二轮 update）+ [UM12](../tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) Resolution（32/13 + B 类全修指令 + 13 红清单）+ [UM-MERGE-INTEGRITY](../tickets/phase-upstream-merge/UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) Resolution + [UM15](../tickets/phase-upstream-merge/UM15-durable-upstream-sync-method.md) Resolution + [UM11](../tickets/phase-upstream-merge/UM11-pr-merge-post-cleanup.md) 2026-09-14 update + [`research/um15-first-slice-implementation-2026-09-14.md`](../research/um15-first-slice-implementation-2026-09-14.md)。
+1. Read 本 prompt + [`research/um-flow-2026-09-08.md`](../research/um-flow-2026-09-08.md) 末尾（2026-09-14 第二轮 update）+ [UM12](../tickets/phase-upstream-merge/UM12-post-merge-ga-fork-ci-resweep.md) Resolution（32/13 + B 类全修指令 + 13 红清单）+ [UM-MERGE-INTEGRITY](../tickets/phase-upstream-merge/UM-MERGE-INTEGRITY-LOSSY-BOTH-WAYS.md) Resolution + [UM15](../tickets/phase-upstream-merge/UM15-durable-upstream-sync-method.md) Resolution + [UM11](../tickets/phase-upstream-merge/UM11-pr-merge-post-cleanup.md) 2026-09-14 update + [`research/um15-first-slice-implementation-2026-09-14.md`](../research/um15-first-slice-implementation-2026-09-14.md)。
 2. **核两 tip + 两树状态**：resync `10941436b5`（0 行）、master `44e6a485b0`（0 行）。⚠ **核 symlink**：`git -C /Users/mckenzie/workspace/dsh-resync ls-files -s | awk '$1=="120000"{print $4}'` + 逐个 `[ -L ]`。若坏：
    ```sh
    git config core.symlinks true

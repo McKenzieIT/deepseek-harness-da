@@ -217,7 +217,7 @@ Because all three are contract-level events rather than mechanical merges, non-z
 - **`apps/*`, `vendor/*`, `python/*`, non-`dsh-` packages.**
 - **Dynamic imports**; `@Remote` emitters are a text scan, not checker-resolved (stated at `:206-211`).
 - **Versions**, tool schemas, config schemas, event surfaces.
-- **The data-agent→upstream dependency table with the VIOLATION row.** UM-flow describes it as part of UM-ARCH's output, but the generated graph has no such table — it has one flat 332-row depmap with a `seam role` column. The violation semantics live only in `UM-flow-2026-09-08.md` prose. **The graph cannot answer "is this consumption a violation?" today.**
+- **The data-agent→upstream dependency table with the VIOLATION row.** UM-flow describes it as part of UM-ARCH's output, but the generated graph has no such table — it has one flat 332-row depmap with a `seam role` column. The violation semantics live only in `research/um-flow-2026-09-08.md` prose. **The graph cannot answer "is this consumption a violation?" today.**
 - **`seam-6` is a phantom.** `SEAM_MANIFEST` declares it with `implementations: []` and `mode: 'pending'`, and its note still reads "workspace-files dir absent" — but `packages/api/workspace-files` exists in HEAD. Verified marking counts in the committed graph: seam-1 → 7 packages, seam-2 → 21, seam-3 → 1, seam-4 → 1, seam-5 → 1, **seam-6 → 0**. UM-ARCH's Resolution claims "workspace-files 已 authoritative"; that is true of the *package inventory* (it appears as a node and as an emitter/assembly member) but **false of the seam marking**. Any analyzer that reads seam membership off the graph will see the workspace-files seam as nonexistent. This is a small, real bug that UM15 depends on and should fix as a precondition.
 
 **Cheap architectural-shift detection — the git-only trick.** I verified which generated artifacts are committed in upstream's tree at both revisions:
@@ -292,7 +292,7 @@ Derived from `UM-LINT-TYPEAWARE-CORDIS`, `UM12`, `UM-ARCH`, `UM15`, `UM-ADAPT`. 
 **Blocked by**: — / [<ID>](<file>.md)
 **Blocks**: [<ID>](<file>.md)（<why>）
 **Graduated from**: [<source>](<file>.md)（<date> <what produced it>）
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase <X>）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase <X>）
 
 ## Question
 <the decision or unknown, stated so it can be answered. For grilling: enumerate

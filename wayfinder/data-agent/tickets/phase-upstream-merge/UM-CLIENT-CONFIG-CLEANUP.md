@@ -4,7 +4,7 @@
 **Blocked by**: UM14（synced base `8112743d69`）、UM16（root-entry fix 解 mask 后露出）
 **Blocks**: UM10（typecheck-green gate）
 **Related**: UM-APIPROXY-REMOVAL-CLIENT-TYPE-ANALYSIS（research 票，本票是其 Surface D+E 分支）、UM8（config-divergence）
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase C verify）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase C verify）
 
 ## Question
 

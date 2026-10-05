@@ -5,7 +5,7 @@
 **Blocked by**: UM14（synced base）、UM16（root-entry fix 解 mask）、UM-APIPROXY-REMOVAL-CLIENT-TYPE-ANALYSIS（research 票，识别本 sprint）
 **Blocks**: UM10（typecheck-green gate——B+C+G ~81 error 卡它）、R-DA-CLIENT-RUNTIME-DECOMMISSION（zombie 删除——zombie 的 ClientRemote refs）、R-DA-UI-PRESENTER-COMPOSITION Phase-2（presenter 调 `remote.X.Y()`）
 **Related**: UM-CORDIS-REGEN（subtask 2 已 regen `api-catalog.ts` 的 `resultGateway`，但 `ClientRemote` namespace 仍缺 17 个 `/remote` augmentation）、UM-CLIENT-CONFIG-CLEANUP（surface D+E，并行）、UM-CONNECTION-FIXTURE-DEAD-APICLIENT（adaptive A，并行）
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase-B-adapt / 后续 session）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase-B-adapt / 后续 session）
 
 ## Question
 

@@ -60,7 +60,7 @@ post-merge 重基线 GA-FORK-CI：
 
 ## 执行流程（铁律）
 
-1. **Read** 本 prompt + `tickets/phase-upstream-merge/UM-flow-2026-09-08.md`（overview）+ `UM10`/`UM11`/`UM12` 票 + `R-DA-CLIENT-RUNTIME-DECOMMISSION` Resolution。
+1. **Read** 本 prompt + `research/um-flow-2026-09-08.md`（overview）+ `UM10`/`UM11`/`UM12` 票 + `R-DA-CLIENT-RUNTIME-DECOMMISSION` Resolution。
 2. **线 A**：`pnpm run check:all` + `build:official` + full `lint` + `test:web`/`test:snapshot`（按需）。记 residual（pre-existing non-blocking vs new）。
 3. **线 B**：push resync + master（或开 PR）。UM11 post-cleanup。
 4. **线 C**：UM12 GA-FORK-CI re-sweep（重基线 + 修 residual）。
@@ -91,7 +91,7 @@ post-merge 重基线 GA-FORK-CI：
 
 ## 起手 checklist
 
-1. Read 本 prompt + `tickets/phase-upstream-merge/UM-flow-2026-09-08.md`（overview）+ `UM10`/`UM11`/`UM12` 票 + `R-DA-CLIENT-RUNTIME-DECOMMISSION` Resolution。
+1. Read 本 prompt + `research/um-flow-2026-09-08.md`（overview）+ `UM10`/`UM11`/`UM12` 票 + `R-DA-CLIENT-RUNTIME-DECOMMISSION` Resolution。
 2. 确认 resync tip `eb9e4cf05c` + master tip `96464c6157` + 两树 working tree 干净（resync：84 untracked pre-existing tsdown；master：完全干净）。
 3. **线 A**：`pnpm run check:all` + `build:official` + full `lint` + `test:web`/`test:snapshot`（按需）。记 residual。
 4. **线 B**：push resync + master（或开 PR）。UM11 post-cleanup。

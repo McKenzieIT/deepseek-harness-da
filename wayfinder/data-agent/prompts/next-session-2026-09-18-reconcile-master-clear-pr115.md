@@ -18,7 +18,7 @@
 | resync 树 | `/Users/mckenzie/workspace/dsh-resync`，branch `upstream/resync-2026-09-08`，tip `0301586bed`，**已 push origin**（`origin/upstream/resync-2026-09-08` = `0301586bed`），工作树干净 |
 | master 树 | `/Users/mckenzie/workspace/deepseek-harness-da`，tip `f0038f63e4`，**local ahead `origin/master` 15+ commit（unpushed）**，工作树干净 |
 | **PR #115** | **OPEN** https://github.com/McKenzieIT/deepseek-harness-da/pull/115（base `master` ← head `upstream/resync-2026-09-08`，4 点 body）；GitHub **CONFLICTING/DIRTY** |
-| 冲突文件 | **5 个 wayfinder doc**：`wayfinder/data-agent/map.md`(content) + `tickets/phase-upstream-merge/UM-ADAPT-per-shift-adaptive-analysis.md` / `UM-flow-2026-09-08.md` / `UM14-resync-to-upstream-latest.md` / `UM16-build-green-on-synced-base.md`(add/add)；**代码零冲突**（upstream-sync code clean merge）|
+| 冲突文件 | **5 个 wayfinder doc**：`wayfinder/data-agent/map.md`(content) + `tickets/phase-upstream-merge/UM-ADAPT-per-shift-adaptive-analysis.md` / `research/um-flow-2026-09-08.md` / `UM14-resync-to-upstream-latest.md` / `UM16-build-green-on-synced-base.md`(add/add)；**代码零冲突**（upstream-sync code clean merge）|
 | merge-base(origin/master, resync) | `65bf3cddc9`（旧 pre-merge 基线） |
 | `origin/master` tip | `e064933dc8`（有 evaluation R1+G1 wayfinder work，origin/master-only） |
 | `check:ci:static` | **36/11**（本 session 零新增）|

@@ -2,7 +2,7 @@
 
 **Type**: task · **Status**: resolved（2026-09-10，UM10 线 A）· **Phase**: upstream-merge
 **Blocking**: UM14（synced base）
-**Flow**: 见 `UM-flow-2026-09-08.md`（Phase B）
+**Flow**: 见 `research/um-flow-2026-09-08.md`（Phase B）
 **= task #1 re-scoped/formalized**（resync-then-fix，不 churn——fix 是 Phase B 最后一步，不跟 re-sync 抢 tsconfig）
 
 ## Question

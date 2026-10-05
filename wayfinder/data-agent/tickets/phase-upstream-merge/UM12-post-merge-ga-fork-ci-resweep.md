@@ -4,7 +4,7 @@
 **Phase**: upstream-merge
 **Status**: **resolved** (2026-09-13 Cluster D hybrid apply landed via UM-C-GATES; 5 gates 收口——2 FIX + 2 KNOWN-RED + 1 moot; CI real red-set 归属明确)
 **Assignee**: unclaimed
-**Blocked by**: ~~UM11~~ → **UM10（已 resolved 2026-09-10）**。原写 `UM11` 与 UM11 的 `Blocked by: UM10 + UM12` 互锁成环；以 `UM-flow-2026-09-08.md` 的 `UM10 → UM12 → UM11` 为准 → **本票现 unblocked，是 Phase C 当前 frontier**
+**Blocked by**: ~~UM11~~ → **UM10（已 resolved 2026-09-10）**。原写 `UM11` 与 UM11 的 `Blocked by: UM10 + UM12` 互锁成环；以 `research/um-flow-2026-09-08.md` 的 `UM10 → UM12 → UM11` 为准 → **本票现 unblocked，是 Phase C 当前 frontier**
 **Blocks**: —
 **Related**: [GA-FORK-CI-green](../phase-misc/GA-FORK-CI-green.md)（5 项 pre-existing red 的总账）、[repo-infra T7–T12](../../../repo-infra/map.md)（red gate 逐项票：T7 verify-export-jsdoc / T9 built-package-invariants / T10 publint / T11 test:coverage / T12 windows-native）、[UM10](UM10-verify-typecheck-lint-ci-gates.md)（验非回归）、[UM11](UM11-pr-merge-post-cleanup.md)；a-series 并行 session（PR #88/#89/#90 + #67/#68/#69/#79）
 
@@ -34,7 +34,7 @@ UM10（verify）只验非回归，**不主动修 residual red**。本票补这�
 
 [UM10](UM10-verify-typecheck-lint-ci-gates.md) 线 A 在 resync base（tip `ecaa56c848`）上实跑了 `check:ci:static` 全 45 门 + full lint + `build:official`。**本票原设计是「merge 落 master 后重基线」，但现在已经有一份 pre-merge 实测红集**——先在 resync 分支上收掉大头，比等 merge 后再扫更省事（merge 只会让归因更难）。
 
-**Blocked by 修订**：原写「UM11（merge 落 master 后启动）」。但 UM-flow 的实际顺序是 **UM10 → UM12 → UM11**（见 `UM-flow-2026-09-08.md` 的 mermaid + Phase C 叙述），本票 header 的 `Blocked by: UM11` 是旧框残留、且与 UM11 的 `Blocked by: UM10 + UM12` 构成环。**以 flow doc 为准：本票现已 unblocked（UM10 resolved），是 Phase C 的当前 frontier。**
+**Blocked by 修订**：原写「UM11（merge 落 master 后启动）」。但 UM-flow 的实际顺序是 **UM10 → UM12 → UM11**（见 `research/um-flow-2026-09-08.md` 的 mermaid + Phase C 叙述），本票 header 的 `Blocked by: UM11` 是旧框残留、且与 UM11 的 `Blocked by: UM10 + UM12` 构成环。**以 flow doc 为准：本票现已 unblocked（UM10 resolved），是 Phase C 的当前 frontier。**
 
 ### 已翻绿（UM10 线 A，commit `ecaa56c848`）
 

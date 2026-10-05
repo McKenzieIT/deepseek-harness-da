@@ -6,7 +6,7 @@
 **Assignee**: wayfinder-session 2026-09-10（Phase C 线 A：full-gate sweep）
 **Blocked by**: UM16 + R-DA-CLIENT-RUNTIME-DECOMMISSION + R-DA-UI-PRESENTER-COMPOSITION + cordis regen（Phase B 完成后，在 synced+改造+build-green base 上验证）
 **Blocks**: UM11
-**Related**: [GA-FORK-CI-green](../phase-misc/GA-FORK-CI-green.md)、[UM-flow-2026-09-08](UM-flow-2026-09-08.md)（Phase C）
+**Related**: [GA-FORK-CI-green](../phase-misc/GA-FORK-CI-green.md)、[UM-flow-2026-09-08](../../research/um-flow-2026-09-08.md)（Phase C）
 
 ## Findings (2026-09-08 调查，已核)
 
