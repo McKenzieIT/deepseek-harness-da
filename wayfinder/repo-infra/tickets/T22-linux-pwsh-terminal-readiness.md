@@ -2,7 +2,8 @@
 
 **Type**: research
 **Phase**: post-discovery
-**Status**: open——root cause 已确认为 readiness 竞态，但**本票原先设想的 remedy 已被 PR #161 自身的 CI 推翻**（见下方「2026-09-16」一节）
+**Status**: open
+**Note**: root cause 已确认为 readiness 竞态，但**本票原先设想的 remedy 已被 PR #161 自身的 CI 推翻**（见下方「2026-09-16」一节）。下一步的首要机制是 `startSend` 对每次发送无条件清空 readiness 证据。
 **Assignee**: unclaimed
 **Related**: [T11](T11-test-coverage-failing.md)；证据取自 `node 24 / coverage` job 104635347140（PR #158 head `a386b9088c`，该分支只改 `upstream-monitor.spec.ts`，与本 spec 无关）
 

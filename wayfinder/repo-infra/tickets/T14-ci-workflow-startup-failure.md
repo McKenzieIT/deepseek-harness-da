@@ -2,7 +2,8 @@
 
 **Type**: bug（workflow syntax；根因已定位 + 已修）
 **Phase**: post-discovery
-**Status**: fixed 2026-09-15（与本票同一 PR 落地；验收证据 = 该 PR 自身首次出现 `ci.yml` 的 job）
+**Status**: resolved-pending-verification（2026-09-15）
+**欠**: 首个真实 PR 运行的确认（验收证据 = 该 PR 自身首次出现 `ci.yml` 的 job）
 **Assignee**: codex-session-2026-09-15
 **Severity**: high —— 不是某个门红，而是**整条 CI 静态/覆盖链从未运行**，本地 `pnpm run check:ci:*` 是唯一真实证据来源
 **Related**: 发现于 data-agent 的 [UM17](../../data-agent/tickets/phase-upstream-merge/UM17-post-merge-latest-upstream-and-monitor-validation.md) 收口审计（查 PR #130 门禁清单时发现应有的 CI job 一个都不在）；[T6](T6-ci-checkout-issue-policy.md)（同为 CI workflow 域）；upstream `61f910d ci: split master-only jobs into ci-master.yml` 引入的 `ci-master.yml`

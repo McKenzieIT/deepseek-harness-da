@@ -2,7 +2,14 @@
 
 **Type**: research（需先定 root cause：产品 bug vs 测试同步）
 **Phase**: post-discovery
-**Status**: root cause 已判定 = **写失败**；修复在分支 `fix/repo-infra-storage-json-windows-rename`（见下方「判定结果」）
+**Status**: resolved-pending-verification (2026-09-16, PR #160 `051519b169`)
+**欠**: 第二次真实确认运行（验收 = 连续两次，目前 1 次）
+**Status 更正（2026-10-06）**: 本行原为散文「修复在分支 `fix/repo-infra-storage-json-windows-rename`」。
+该分支**不存在**（local 与 origin 均查无此分支），fix 实际已 **merge 进 master**
+（`051519b169 fix(storage-json): retry a transient Windows atomic replace (#160)`），
+代码在 `packages/storage/storage-json/src/atomic.ts:20,38`（import 并使用
+`renameAtomicTemp`）与 `packages/util/atomic-write/src/index.ts:46`（公开导出）。
+指向一个不存在的分支是此前最容易误导下一个 session 的一行。
 **Assignee**: unclaimed
 **Related**: [T11](T11-test-coverage-failing.md)；证据取自 `windows node 24 / coverage` job 104534944084（PR #155 head `7f1365dfb6`）与 job 104635347170（PR #158 head `a386b9088c`）
 

@@ -2,7 +2,8 @@
 
 **Type**: task
 **Phase**: post-discovery
-**Status**: resolved（2026-09-16；等真实 CI 确认）
+**Status**: resolved-pending-verification（2026-09-16, PR #163 `d1f0fcad14`）
+**欠**: 真实 CI 确认运行
 **Assignee**: —
 **Related**: [T11](T11-test-coverage-failing.md) 的 coverage 收口；证据取自 `windows node 24 / coverage` job 104648904870（PR #157 head `392cd1a19e`）
 
