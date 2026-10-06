@@ -47,6 +47,18 @@ master **无分支保护**（2026-10-06 复测 `gh api repos/McKenzieIT/deepseek
 4. **接受现状**：不开 protection，CI 保持装饰，靠 session 纪律 + lefthook。
    明确写下来，免得后来的人以为 CI 在把关。**这是唯一不依赖 T30 的候选。**
 
+## 一条实现约束（2026-10-06 查实）：带 `paths:` 过滤的 workflow 不能直接进 required
+
+GitHub 文档：
+> *"You should **not** use path or branch filtering to skip workflow runs if the workflow is required
+> to pass before merging"*
+
+被 skip 的 required workflow 会**停在 Pending 并永久阻塞合并**（不是变绿）。
+→ 若选候选 2「分级 required」，任何带路径过滤的 workflow 进 required 前
+必须改成**恒定运行的 shim job**，在不相关 diff 上短路为 success。
+另：PR 规则与 status-check 规则**必须在同一个 ruleset 内**，否则一个 bypass 盖不住两者。
+详见 [github-path-scoped-pr-exemption-2026-10-06](../research/github-path-scoped-pr-exemption-2026-10-06.md)。
+
 ## 一条跨候选的约束：确定性 vs flake 要分开处置
 
 红门里有**两类**东西，不能用同一种策略处置：

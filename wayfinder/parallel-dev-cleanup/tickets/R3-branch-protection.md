@@ -40,9 +40,13 @@ Once on, `--no-verify` is fully closed (direct pushes blocked pre-push; the loca
    括号里的 "+ CI" 就是锁死点：只 required 前者是可行的，加上 CI 全量不可行。
    R4 定完「哪些进 required」，本票这一侧即解除——**即使其余红门仍然红**。
 2. **[R6](R6-master-direct-push-permission-set.md) —— 直推许可集。**
-   classic branch protection 的 required status checks **对直推同样生效**，
+   required status checks **对直推同样生效**（2026-10-06 已查实有文档支持，见
+   [research note](../research/github-path-scoped-pr-exemption-2026-10-06.md) 的 ①：
+   required checks 挂在 commit SHA 上，新建的本地 commit 无 status 故必被拒），
    所以「开 protection」会切断 CLAUDE.md 明文允许的 `wayfinder/**` 文档直推路径。
-   这不只是 "Restrict pushes" 的问题——即使只开 required checks，那条路径一样断。
+   这不只是 "Restrict pushes" 的问题——**即使只开 required checks，那条路径一样断**。
+   且 R6 原先的候选 (c)「ruleset 按路径豁免 `wayfinder/**`」**已查实为 GitHub 不支持**，
+   所以这条路径没有「配置一下就绕过去」的解法，必须真做决议。
 
 **红门本身的归零/冻结属 [repo-infra](../../repo-infra/map.md)（T18–T30），不是本票的前置。**
 本票不在此复制红门清单与规模数字（归属口径见 map 的 Notes）；

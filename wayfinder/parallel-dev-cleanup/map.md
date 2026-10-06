@@ -24,6 +24,8 @@
 - **⑤ 55 missing .zh.md triage (resolved 2026-09-05, PR #10 merged)**:55 分类(22 .agents/notes 内部 + 33 用户可见[10 docs + 21 packages/README + 2 wayfinder])。译 2(adr-0001 EN→ZH 译、da-product-brief 中文撰写 copy),53 defer(triage + 优先级 + 建议)。scoped green。
 - **⑥ issue workflows 上游专用 (resolved 2026-09-07, `2fa038f6e6`)**〔[R5](tickets/R5-issue-workflows-upstream-only.md)〕:决策 = **加 repo 守卫**。`issue-policy.yml:19` + `issue-lifecycle.yml:43` 的 `github.repository_owner == 'deepseek-ai'` 让两个 job 在 fork 上 skipped(GitHub 计为通过)。**不是本 effort 走的路** —— 由 data-agent [UM2](../data-agent/tickets/phase-upstream-merge/UM2-ci-conflicts-reland-48-52.md) 的 re-land 顺带做掉,本票从未被认领;2026-10-06 本 map 实测复核(最近 5 次运行全 `skipped`)后补记。**订正**:R5 原文建议的 owner 字符串 `'deepseek-harness'` 是**错的**(那是 issue-management 的 organization,不是仓库 owner),照抄会把上游一起 skip。同一事实曾在四处记账(R5 / repo-infra T6 / semantic-layer CB-5 / data-agent UM2),后续归属统一 → repo-infra [T29](../repo-infra/tickets/T29-da-ci-upstream-boundary.md)。
 - **⑦ 本地 master 发散已消解 (verified 2026-10-06)**:原 fog 记「并发 session 的生产-src commit `c26eada21b fix(client): ui-context-layer` 推不上、gate 拦住」。实测该 commit 现**不被任何分支引用**,本地 master 相对 origin/master 已无发散。无需 Lead 收敛,条目作废。
+- **⑧「重启在跑 session 让新 CLAUDE.md 生效」判为 moot (2026-10-06)**:该 fog 条目开于 2026-09-06,要传播的是 `427508ca3f`(2026-09-04)那条并行 session 分支纪律。此后 CLAUDE.md **又改了三次**(`3976051de2`、`6da04aad27` 两条 2026-09-07;`13cb7b38a7` 2026-09-24),且 master 落了 350 个 commit、横跨 15+ 个不同 scope ——session 显然已多轮换代。原条目描述的那次传播早已被三个版本覆盖:今天还活着的 session 要么起于 2026-09-24 之后(已有最新),要么已落后三版 CLAUDE.md,那是另一个且更大的问题,不是本条目所述的那件事。**条目作废,fog 归零。**
+- **⑨ GitHub 不支持按路径豁免 PR 要求 (researched 2026-10-06)**〔[research note](research/github-path-scoped-pr-exemption-2026-10-06.md)〕:R6 自 2026-09-06 标注「未验证」的那条平台能力已查实 —— **不支持,且是结构性缺失**。ruleset 的 `conditions` 只有 `ref_name`(REST schema 自述为 "…ruleset **ref name** condition"),三级条件词汇无任何路径条件;路径感知只在 `file_path_restriction`(push 规则、**无法限定到 master**、仅 private/internal、纯 deny-list)、CODEOWNERS(只加 review 要求)、`required_reviewers.file_patterns`(beta,豁免审批而非 PR)三处,且规则之间只取**最严**、从不互相放松。→ **R6 候选 (c) 删除**,新增 (d) PR 无人工摩擦(`review_count: 0` + auto-merge + CODEOWNERS)与 (e) 拆独立仓库。**顺带查实两条机制**:required status checks **确实拦直推**(挂在 commit SHA 上,新 commit 无 status 必被拒)——R3 原先的推断现有文档支持;带 `paths:` 过滤的 workflow **不能**进 required(被 skip 会停在 Pending 永久阻塞合并)——直接约束 R4 的候选 2。
 
 ## Open tickets
 
@@ -37,7 +39,7 @@
 
 ## Not yet specified
 
-- **重启在跑 session**(含 dsh-cl23)让新 CLAUDE.md 生效——ops(session 做不了)。**⚠️ 2026-10-06:本条自 2026-09-06 起未复核**,当时那批 session 是否仍在跑无法从仓库侧判定,须 Lead 确认后再决定作废或成票。
+（暂无 —— fog 归零。本 map 的活票全部在 `## Open tickets`,未成票的待办已清空。）
 
 > **2026-10-06 结构更正**:本节此前装着 R1–R5 五条，每条一对一对应一张**活票** —— 而 wayfinder 的
 > `Not yet specified` 明文排除「已经是活票的」。fog 被当成票索引用，实际 fog 数为 0。

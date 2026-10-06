@@ -66,16 +66,45 @@ spec 现有 **32 个测试全绿**（原 27，随 `bin/` 扩展增至 32）。
 
 CLAUDE.md 明文允许「纯 `wayfinder/` 文档」直推 master，`wayfinder/_templates/session-prompt.md`
 与各 session prompt 的「文档直推」小节把它当标准做法（**本票所属的 2026-10-06 scoping session
-本身就在用这条路径提交**）。而 classic branch protection 的 required status checks
-**对直推同样生效**——所以这不只是 "Restrict pushes" 的问题，R3 的约束 1「会把 master 永久锁死」
-锁的正是这条路径。
+本身就在用这条路径提交**）。而 required status checks **对直推同样生效**——所以这不只是
+"Restrict pushes" 的问题，R3 的约束 1「会把 master 永久锁死」锁的正是这条路径。
 
-开之前必须先决定文档怎么走：
+**该机制 2026-10-06 已有文档支持**（此前是推断）：
+> *"Required status checks must have a `successful`, `skipped`, or `neutral` status before collaborators
+> can **make changes to** a protected branch."*
+> *"If required status checks have not passed, **pushing to a protected branch** returns an error…
+> `GH006: Protected branch update failed` / `Required status check "ci-build" is failing`"*
 
-- **(a)** 文档也一律走 PR —— 每次改 ticket/map 都开一个 PR，成本显著上升；
-- **(b)** 给 master 留 bypass（"Allow specified actors to bypass required pull requests"）；
-- **(c)** 改用 ruleset 按路径豁免（`wayfinder/**` 免 PR）—— **需先验证 GitHub 当前是否支持按路径放行**
-  （2026-09-06 落笔时未查，2026-10-06 仍未查；这是本票唯一需要外部事实的一步）。
+ruleset 侧说得更直白：`required_status_checks` = *"…must pass before **the ref is updated**.
+When enabled, **commits must first be pushed to another ref where the checks pass**."*
+原因是 required checks 挂在 **commit SHA** 上，而新建的本地 commit 没有任何 status。
+→ **即使不开 "Restrict pushes"，只开 required checks 也会切断直推路径。**
+
+开之前必须先决定文档怎么走。**2026-10-06 已查实平台能力**，候选集因此改变 ——
+详见 [github-path-scoped-pr-exemption-2026-10-06](../research/github-path-scoped-pr-exemption-2026-10-06.md)：
+
+- **(a)** 文档也一律走 PR —— 每次改 ticket/map 都开一个 PR，成本显著上升。
+  → 其低摩擦版见 **(d)**，优先评估 (d)。
+- **(b)** 给 master 留 bypass actor。**仍可行，但代价必须写清**：bypass 是**无条件**的，
+  GitHub 对路径**零保证** —— 拿到该 actor 的人可以直推**任意代码**。
+  给**真人**开 bypass 等于给他直推代码的权限。若选它，建议用专用 GitHub App / 机器账号，
+  并把「只写 `wayfinder/`」的约束放进那个 workflow 自己（即约束由我们而非 GitHub 强制）。
+  **注意**：PR 规则与 status-check 规则必须放进**同一个 ruleset**，否则一个 bypass 盖不住两者。
+- **(c)** ~~ruleset 按路径豁免（`wayfinder/**` 免 PR）~~ —— **❌ 已查实：GitHub 不支持，候选删除。**
+  ruleset 的 `conditions` 只有 `ref_name`（REST schema 自述为
+  *"Parameters for a repository ruleset **ref name** condition"*），三级条件词汇里**没有任何路径条件**。
+  路径感知只存在于 `file_path_restriction`（push 规则、**无法限定到 master**、仅 private/internal、
+  纯 deny-list）、CODEOWNERS（只加 review 要求）、以及 `required_reviewers.file_patterns`（beta，
+  豁免的是**审批**不是 PR）。反向使用 deny-list 会废掉全仓 feature 开发**且仍不放松 PR 规则**。
+  这是**结构性缺失**，不是「暂时没做」。
+- **(d) 新候选（2026-10-06 加，全 GA，推荐先评估）—— PR 必须开，但无人工摩擦**：
+  `pull_request` + `required_approving_review_count: 0` + 仓库开 auto-merge，
+  审批负担用 CODEOWNERS 只压在代码上（`wayfinder/` 不写 owner → 文档 PR 无需 code-owner 批准）。
+  文档改动 = 建分支 + 开 PR + auto-merge，**无人参与**；代码改动 = 需 code-owner 批准。
+  代价：每次改 ticket/map 仍要一个分支 + 一个 PR 对象，但不占用人。
+- **(e) 新候选 —— 把 `wayfinder/` 拆成独立仓库**（submodule / subtree 消费）：
+  权限边界与内容边界对齐，是 GitHub 设计实际假设的模型，**唯一不需要任何 bypass 的方案**。
+  代价最大（迁移 + 跨仓引用全部要改），列出备选。
 
 ## 诚实记录
 
@@ -97,5 +126,7 @@ CLAUDE.md 明文允许「纯 `wayfinder/` 文档」直推 master，`wayfinder/_t
 - 许可集有**单一定义**（写在一处，另两处引用它）。
 - `CLAUDE.md:83` 的措辞与 `PROD_SRC_PATTERN` 不再互相越界，且「实验脚本」这一项有明确所指或被删。
 - `tests/` 与 `.github/` 的放行/收紧有决议（若收紧：扩正则，32 个测试的回归网托着，成本低）。
-- 文档路径三选一有决议；若选 (c)，先给出 GitHub 按路径豁免的能力验证。
+- 文档路径在 **(a) / (b) / (d) / (e)** 里有决议（**(c) 已因平台不支持而删除**，
+  能力验证见 [research note](../research/github-path-scoped-pr-exemption-2026-10-06.md)）。
+  若选 (b)：写明「路径约束由我们而非 GitHub 强制」这一事实，并指定 actor 为 App/机器账号而非真人。
 - R3 解除本票这一侧的阻塞。
