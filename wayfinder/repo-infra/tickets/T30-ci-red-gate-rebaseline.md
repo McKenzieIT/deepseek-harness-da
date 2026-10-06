@@ -1,6 +1,7 @@
 # T30 — 红门清单重建基线（批 0）
 
-**Type**: task  ·  **Status**: open
+**Type**: task
+**Status**: open
 **Part of**: [repo build and CI gate credibility map](../map.md)
 **Mode**: AFK
 **Blocks**: [parallel-dev-cleanup R4](../../parallel-dev-cleanup/tickets/R4-ci-red-gate-policy.md)（策略票无可信集合即无法定案）

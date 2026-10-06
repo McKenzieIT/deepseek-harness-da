@@ -15,7 +15,8 @@
 - **域**：DSH repo-wide CI 可靠性与门禁归零（test reliability、平台差异、lane 预算、build 产物与 token 定义的历史尾巴）。
 - **每会话应查 skills**：`grilling`、`domain-modeling`。另：测试可靠性类票见各票 `**Mode**` 行指定的 `dsh-ci-test-reliability` / `diagnosing-bugs`。
 - **CI 红门归属（2026-10-06 定）**：本 map 持有**逐项修复**（T18–T30）；门禁**策略**（required 集合、branch protection、直推许可集）属 [parallel-dev-cleanup](../parallel-dev-cleanup/map.md) 的 R4/R3/R6；**总账与合并期重基线**属 [data-agent](../data-agent/map.md) 的 `GA-FORK-CI-green` + UM 系列。**三方互不复制对方的数字** —— 本 map 是红门集合的**权威来源**，另两张引用本 map 而不自存快照。
-- **Status 词表**（封闭集；单行 `**Status**: <值>` 语法，可带 `(日期, PR #N)` 后缀）：`open` 可取且无未闭前置 · `blocked` 有未闭前置，须列 `**Blocked by**:` · `ledger` 不再承接修复、仅留施工记录、**不进 frontier** · `resolved` 验收已达成 · `resolved-pending-verification` fix 已合并但本域验收（连续两次真实运行）未凑满 · `moot` 前提已蒸发（非范围判断） · `migrated` 归属已迁出，须给目标链接。**新值须先进本表。** 其余 wayfinder map 不在本次写权内，本表仅约束本 map。
+- **Status 词表**（封闭集；单行 `**Status**: <值>` 语法，可带 `(日期, PR #N)` 后缀）：`open` 可取且无未闭前置 · `blocked` 有未闭前置，须列 `**Blocked by**:` · `ledger` 不再承接修复、仅留施工记录、**不进 frontier** · `resolved` 验收已达成 · `resolved-pending-verification` fix 已合并但本域验收（连续两次真实运行）未凑满 · `moot` 前提已蒸发（非范围判断） · `migrated` 归属已迁出，须给目标链接 · `closed` **历史同义词**，等同 `resolved`（本 map 早期 12 张票在用，如 T1–T6/T13/T26；**新票一律用 `resolved`**，既有的不批量重写——在三周漂移上叠大面积改动是纯风险）。**新值须先进本表。** 其余 wayfinder map 不在本次写权内，本表仅约束本 map。
+  （2026-10-06 实测：本 map 30 张票 **30/30** 的 `**Status**:` 位于行首可解析，取值全部落在本表内。）
 - **常设原则**：
   - 遵循 `packages/client/AGENTS.md` 全部纪律（如触 src）。
   - 与并发 session 协调（CB-4 zod 回归是独立 ticket，不并入——见 Out of scope）。

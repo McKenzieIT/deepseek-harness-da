@@ -1,6 +1,7 @@
 # T27 — bash-local executor 生命周期测试竞争
 
-**Type**: task  ·  **Status**: open
+**Type**: task
+**Status**: open
 **Part of**: [repo build and theme infra map](../map.md)
 **Mode**: AFK；实现前使用 `dsh-ci-test-reliability` 与 `diagnosing-bugs`
 

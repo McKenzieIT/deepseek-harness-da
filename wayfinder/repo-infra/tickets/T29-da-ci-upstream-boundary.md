@@ -1,6 +1,7 @@
 # T29 — DA CI 与 upstream workflow ownership
 
-**Type**: grilling  ·  **Status**: open
+**Type**: grilling
+**Status**: open
 **Part of**: [repo build and theme infra map](../map.md)
 **Migrated from**: [semantic-layer CB-5](../../semantic-layer/tickets/CB5-da-ci-upstream-boundary.md)
 

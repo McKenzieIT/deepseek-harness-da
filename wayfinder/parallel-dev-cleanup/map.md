@@ -12,7 +12,7 @@
 - **纪律**:CLAUDE.md 并行 session 分支纪律 + 提交/引证纪律(每 session 启动必读);docs/da-pr-workflow.md 分支契约;wayfinder/_templates/session-prompt.md。
 - **gate**:`verify-no-production-src-on-master`(lefthook pre-push + CI workflow)拦直推 master 的生产源码。**2026-10-06 实测的实际覆盖**:`(packages|apps|native|python)/**/(src|bin)/` + `scripts/` —— `bin/` 已由 `34f8098a83` 加入(① 记的「bin/ 不拦」缺口**已补**);仍放行 `tests/`、`.github/`、任意 `*.md`、锁文件与配置。spec 32 个测试。许可集与措辞的对齐见 〔tickets/R6〕。
 - **CI 红门归属(2026-10-06 定)**:本 map 持有门禁**策略**(〔R4〕required 集合 / 〔R3〕branch protection / 〔R6〕直推许可集);红门的**逐项修复**属 [repo-infra](../repo-infra/map.md)(T18–T30);**总账与合并期重基线**属 [data-agent](../data-agent/map.md) 的 `GA-FORK-CI-green` + UM 系列。**三方互不复制对方的数字** —— 本 map 不再本地保存红门规模快照(2026-09-06 那份一天即漂移、一个月后更含一个已不存在的 job 名)。
-- **Status 词表**(封闭集;单行 `**Status**: <值>` 语法,可带 `(日期, PR #N)` 后缀):`open` 可取且无未闭前置 · `blocked` 有未闭前置,须列 `**Blocked by**:` · `ledger` 不再承接修复、仅留施工记录、**不进 frontier** · `resolved` 验收已达成 · `resolved-pending-verification` fix 已合并但本域验收未凑满 · `moot` 前提已蒸发(非范围判断) · `migrated` 归属已迁出,须给目标链接。**新值须先进本表。** 其余 wayfinder map 不在本次写权内,本表仅约束本 map。
+- **Status 词表**(封闭集;单行 `**Status**: <值>` 语法,可带 `(日期, PR #N)` 后缀):`open` 可取且无未闭前置 · `blocked` 有未闭前置,须列 `**Blocked by**:` · `ledger` 不再承接修复、仅留施工记录、**不进 frontier** · `resolved` 验收已达成 · `resolved-pending-verification` fix 已合并但本域验收未凑满 · `moot` 前提已蒸发(非范围判断) · `migrated` 归属已迁出,须给目标链接 · `closed` **历史同义词**,等同 `resolved`(本 map 无,repo-infra 早期票在用;**新票一律用 `resolved`**)。**新值须先进本表。** 其余 wayfinder map 不在本次写权内,本表仅约束本 map。
 - **i18n**:docs/i18n/README.md pairing 契约(EN + .zh.md + .i18n.yaml blob-hash);extended workflow `pnpm run gen-translation-brief <pair>` 用于大 generated 更新。
 
 ## Decisions so far
