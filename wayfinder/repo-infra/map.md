@@ -43,11 +43,58 @@
 - [T17: NodeNext declarations 引用源码子路径](tickets/T17-node-next-types-source-subpaths.md) — 24 个公开 declaration import 改走 package root，并新增 built-declaration 守卫；343 个 workspace package declaration API 在 NodeNext consumer 下通过。
 - [T19: Windows session-projection-cache 读回失败](tickets/T19-windows-projection-cache-durability.md) — resolved 2026-09-16 via PR #160（merge `051519b169`）：root cause 判定为**写失败**而非可见性延迟，判据是单测耗时的双峰分布（四项失败 5332 / 5148 / 5162 / 5061 ms，而同文件内相同 helper 的兄弟用例 141 / 147 ms——迟到的写入会落在中间，只有「抛出后不再重试」才产生全有全无的分布；job 104534944084 与 104635347170）。缺陷是 `storage-json` 的 `writeAtomic` 用裸 `rename`，缺少 `dsh-atomic-write` 那套对 `EACCES`/`EBUSY`/`EPERM` 的有界重试；fix = 公开导出 `renameAtomicTemp` 并在 `writeAtomic` 中改用它，另补 fail-soft 写路径此前完全缺失的 `ctx.logger.warn` 可观测性。顺带推翻一条归档结论：`.agents/notes/archived/process/2026-08-31-windows-coverage-flaky-test-budgets.md` 曾把同一批用例诊断为「未在 40ms 内排空」并放宽到 5 秒宣布修好，它们在 **125 倍**预算下依然失败。**尚欠第二次确认运行**。
 - [T20 part 2: client-catalog 用例预算](tickets/T20-windows-codex-and-catalog-budget.md) — resolved 2026-09-16 via PR #162（merge `413b0681d5`）：`gen-client-catalog.spec.ts` 的 30 秒 case 字面量**主动收窄**了 lane 已授予的 `DSH_COVERAGE_TEST_TIMEOUT_MS: '90000'`（case 字面量覆盖而非让位于 `--testTimeout`，规则见 `scripts/run-gates.ts:613-615`「Explicit fixture timeouts remain authoritative」）。同时纠正本票两处原判：**不是 Windows-only**（Linux job 104542100296 报同一项，PR #155 的 Linux job 104534944130 是以 29536ms 擦线通过），且 **30 秒从来不是深思过的上限**（唯一引入提交 `a7d4cd8e1b "fix: ci"` 只是把它从 Vitest 默认 5 秒上调，当日 lane 仅授予 15 秒，此后从未复核）。实测成本 Linux 13.1–19.2s、Windows 24.3–37.4s，30 秒正好横穿该区间。fix = 按既有 idiom 把预算提到 `describe` 层并等于 lane 值。**part 1（codex 真实产品用例）仍未解决，票据保持 open**——其 8.3 短名路径嫌疑已被推翻，真实根因是 codex `exec_command` 的 `yield_time_ms` 默认 10000ms 竞态，详见下方 Open tickets。同类收窄在别处复发（`typert/generator` 与 `remote-mock`），一度另立 T26，**2026-09-16 判定为同一根因换文件、已并入本票的「### 3」一节并关闭 [T26](tickets/T26-workspace-scan-case-budgets.md)**——避免同一机制的收口分散在两处票据。
+- [T12: windows native complete CI 红](tickets/T12-windows-native-complete.md) — **moot 2026-10-06**（前提蒸发，非范围判断，故记在此而不是 Out of scope）：三条证据——(a) 它命名的 job **不存在**，`ci.yml` 现声明的是 `windows node 24 / native **tests**`（`:673`），全仓 workflow 对 `native complete` 零命中，"complete" 只作为 step 名活在 `ci-master.yml` 的串行 job 里（`:174`/`:207`/`:270`/`:508`）；(b) **它自己写的关票条件已满足**——Scope 原文「若全是 T7–T10 + T4/T5 的 downstream 则随其修后自愈（关本票为 downstream-duplicate）」，而这六张全部已 closed，本票预判了自己的结局；(c) 它不在 2026-09-16 的红门清单里。接力：`native tests` 现在红不红**未知**，由 [T30](tickets/T30-ci-red-gate-rebaseline.md) 点名回答，**若红则另开新票、不复用 T12 编号**。
 
 ## Open tickets
 
-- [T11: test:coverage 红](tickets/T11-test-coverage-failing.md) — deterministic expectation batch 已修并 focused 106 tests 通过；剩余 package-invariant README 迁移、runtime fixture、UI token 与 CI reliability 根因继续收口（**frontier**）
-- [T12: windows native complete CI 红](tickets/T12-windows-native-complete.md) — investigate（疑 downstream of T7–T10 + T4/T5 + windows-specific）（**frontier — research**）
+> **2026-10-06 重整**：此前本节列 8 张，而磁盘上开放的是 11 张（[T27](tickets/T27-bash-local-lifecycle-test-race.md) /
+> [T28](tickets/T28-session-snapshot-timeout-diagnostic-race.md) / [T29](tickets/T29-da-ci-upstream-boundary.md)
+> 整个没进 map）。同时 [T11](tickets/T11-test-coverage-failing.md) 判为 `ledger`、
+> [T12](tickets/T12-windows-native-complete.md) 判为 `moot`，并新开
+> [T30](tickets/T30-ci-red-gate-rebaseline.md)。**清单以 `tickets/` 为准，本节是索引。**
+
+### 取票顺序（批次策略，2026-10-06 定）
+
+此前 11 张票「全部 unblocked、任取」，结果三周无人动，而遮蔽关系与基线漂移都没人记。
+「任取」在本 map 上已经有代价了。改为四批：
+
+- **批 0 —— [T30](tickets/T30-ci-red-gate-rebaseline.md) 重建基线。** 先做。一次 CI 运行同时交付
+  「清单可信」与「T19 / T20 part 2 / T23 / T14 四笔欠确认的账」，而这两件事现在分别是五张票的前置。
+  **[R4](../parallel-dev-cleanup/tickets/R4-ci-red-gate-policy.md)（门禁策略）也等它。**
+- **批 1 —— [T24](tickets/T24-headless-deepseek-idle-budget.md) 解遮蔽。** 它是 snapshots lane
+  的第一项失败，fail-fast 下遮蔽其后 85+ 条 replay。**→ `T24 blocks T21`**（已连边）。
+- **批 2 —— AFK task，可并行**：[T27](tickets/T27-bash-local-lifecycle-test-race.md)、
+  [T28](tickets/T28-session-snapshot-timeout-diagnostic-race.md)、
+  [T20 part 3](tickets/T20-windows-codex-and-catalog-budget.md)、
+  [T21](tickets/T21-snapshot-lane-scheduling-assertions.md)（待 T24 解除后）。机制均已确诊，属逐项落实。
+- **批 3 —— research，需先定根因，按 lane 串行**（避免同一 lane 重复烧 CI）：
+  [T20 part 1](tickets/T20-windows-codex-and-catalog-budget.md)、
+  [T22](tickets/T22-linux-pwsh-terminal-readiness.md)、
+  [T25](tickets/T25-atomic-write-lock-eperm.md)、
+  [T18](tickets/T18-python-wide-value-stress-portability.md)。
+- **不排期**：[T29](tickets/T29-da-ci-upstream-boundary.md) 是 HITL grilling（upstream 边界政策），
+  与红门修复正交，随时可与 user 开；[T11](tickets/T11-test-coverage-failing.md) 是 ledger，不取。
+
+### 本会话处置（2026-10-06）
+
+- [T30: 红门清单重建基线](tickets/T30-ci-red-gate-rebaseline.md) — **新开**。map 的红门清单标 2026-09-16
+  并写「供下一会话直接接手」，而此后 master 落了 **350 个 commit**、`ci-master.yml` 跑了约 **12 次**，
+  本 map 三周无更新。红门集合已实际改变（2026-09-24 run `35982768309` 红的是
+  `python runtime` 的 macos-arm64/macos-x64/linux-arm64 三腿，**不在那张清单里**）（**frontier — 批 0**）
+- [T11: test:coverage 红](tickets/T11-test-coverage-failing.md) — **判为 `ledger`，不进 frontier**。
+  它已是一本 13 节施工日志（12 个 focused PR #142–#155），却因 Status=open 长期占着「第一张可取票」。
+  活根因在 T18/T20/T21/T22/T24/T25；能否关掉是它自己的验收。
+- [T12: windows native complete CI 红](tickets/T12-windows-native-complete.md) — **判为 `moot`**
+  （前提蒸发，详见 Decisions so far）。接力问题「`windows node 24 / native tests` 现在红不红」
+  由 [T30](tickets/T30-ci-red-gate-rebaseline.md) 点名回答。
+- [T27: bash-local executor 生命周期测试竞争](tickets/T27-bash-local-lifecycle-test-race.md) — `open`，
+  AFK task（**此前未进 map**）（**批 2**）
+- [T28: session-snapshot title timeout 诊断竞争](tickets/T28-session-snapshot-timeout-diagnostic-race.md) — `open`，
+  AFK task（**此前未进 map**）（**批 2**）
+- [T29: DA CI 与 upstream workflow ownership](tickets/T29-da-ci-upstream-boundary.md) — `open`，
+  **HITL grilling**（**此前未进 map**）。semantic-layer CB-5 已 `migrated` 入本票。
+  已记入与 [R4](../parallel-dev-cleanup/tickets/R4-ci-red-gate-policy.md) 的分工：
+  **T29 决定 lane 归属与 upstream 边界，R4 决定 required 集合**，互不决定对方
 
 ### T11 拆出的剩余根因（2026-09-16）
 
@@ -70,16 +117,32 @@ T11 已合并 12 个 focused PR（#142–#155）。剩下的四类根因彼此�
 - [T25: `withFileLock` 把 delete-pending 的 EPERM 当成权限拒绝](tickets/T25-atomic-write-lock-eperm.md) — `windows node 24 / coverage` job 104633154572 上 `credentials-local` 并发写用例报锁文件 `EPERM`；`isLockContention` 对 `EPERM` 要求 `lstat` 成功才判为争用，而 Windows 的 delete-pending 状态同时让 `open` 得 `EPERM` 且让 `lstat` 失败。**与 T19 不共调用路径**（T19 是 `storage-json` 的 rename，本票是 `util/atomic-write` 的锁获取），故 #160 的绿不构成本票证据。**目前只有一次观测**（**research**）
 （原 T26 已并入 T20 part 3，见上；[T26](tickets/T26-workspace-scan-case-budgets.md) 保留为指向占位。）
 
-### 当前真实红门清单（2026-09-16，供下一会话直接接手）
+### 当前真实红门清单（2026-09-16）—— ⚠️ 已漂移，待 T30 重建
+
+> **2026-10-06：本节不再可信，勿直接接手。** 它原写「供下一会话直接接手」，但此后
+> `origin/master` 落了 **350 个 commit**、`ci-master.yml` 跑了约 **12 次**（最近 2026-09-24），
+> 而本 map 三周无更新。**集合本身已变，不只是数字**：2026-09-24 的 run `35982768309` 红的是
+> `python runtime / macOS and Linux ARM64` 的 node24-macos-arm64 / macos-x64 / linux-arm64 三腿，
+> 这三条**不在下面的清单里**。
+> 重建 → **[T30](tickets/T30-ci-red-gate-rebaseline.md)（批 0，先做）**。
+> 下面的内容保留作对照基线，供 T30 做增减比对。
 
 记在这里是为了不必再从 CI 日志重新推导。**先看 T24：它决定了 snapshots lane 的清单可信度。**
 
 - **`node 24 / coverage`**：[T18](tickets/T18-python-wide-value-stress-portability.md)（`code-runtime-python` 两个宽值用例；另见 `packages/code-runtime/code-runtime-data-python` 的 bindings 用例在 90 秒 lane 预算上超时）、[T22](tickets/T22-linux-pwsh-terminal-readiness.md)（pwsh，两个 `holdCommand` 分支都可能报红，取决于调度运气）
 - **`windows node 24 / coverage`**：[T20 part 1](tickets/T20-windows-codex-and-catalog-budget.md)（codex，flaky）、[T25](tickets/T25-atomic-write-lock-eperm.md)（credentials-local 锁 EPERM）、[T20 part 3](tickets/T20-windows-codex-and-catalog-budget.md)（typert generator 扫描，原 T26）、以及 T18 同族的 data-python 用例
 - **`node 24 / snapshots and artifacts`**：[T24](tickets/T24-headless-deepseek-idle-budget.md) **排在最前且遮蔽其余**；其后是 [T21](tickets/T21-snapshot-lane-scheduling-assertions.md) 的第 2、3 项（chat-scroll 并发锚点、present-svg 连接告警）；`replays persistent-pwsh-tool-turn` 在**干净树上的状态未知**——它只在 PR #161 那次越过 T24 的运行里被观测过一次，而该分支带着已被推翻的改动
-- **两项欠第二次确认运行**：T19 的四条断言与 T20 part 2 的那一项在 fix 后的运行里均**未再出现**，但**各只有一次确认运行**，第二次仍然欠着。按本域既定验收标准（连续两次真实运行），这两项尚不能算封板。
+- **四项欠确认运行**（2026-10-06 由两项扩为四项，并统一 Status 为 `resolved-pending-verification`）：
+  按本域既定验收标准（**连续两次真实运行**），以下四项尚不能算封板，**全部由
+  [T30](tickets/T30-ci-red-gate-rebaseline.md) 一次运行收割**：
+  - [T19](tickets/T19-windows-projection-cache-durability.md) 的四条断言 —— 已有 1 次，欠第 2 次
+  - [T20](tickets/T20-windows-codex-and-catalog-budget.md) part 2 的那一项 —— 已有 1 次，欠第 2 次
+  - [T23](tickets/T23-gate-descendant-walk-overflow.md) —— fix 已合并（`d1f0fcad14`），欠真实 CI 确认
+  - [T14](tickets/T14-ci-workflow-startup-failure.md) —— fix 2026-09-15 落地，欠首个真实 PR 运行的确认
+  ⚠️ T30 判定「未再出现」时必须同时证明**该用例确实跑了**，而不是被 fail-fast 跳过
+  （T24 遮蔽过 snapshots lane 的 85+ 条 replay，这个坑踩过一次）。
 
-> T7–T12 均 pre-existing GA-FORK-CI gates on master（concurrent session 驱动，PR #67/#68/#69/#79 等逐步 fix；fix 前先 verify 仍红 on current master）。T2/T4/T5/T6/T13 已 closed（见 Decisions so far）。T14/T15 由 data-agent 的 upstream-merge 收口审计（UM17）发现后按域移交本 effort——**它们不是 data-agent 的票**。
+> T7–T12 均 pre-existing GA-FORK-CI gates on master（concurrent session 驱动，PR #67/#68/#69/#79 等逐步 fix；fix 前先 verify 仍红 on current master）。T2/T4/T5/T6/T13 已 closed（见 Decisions so far）；**T12 已于 2026-10-06 判 moot**。T14/T15 由 data-agent 的 upstream-merge 收口审计（UM17）发现后按域移交本 effort——**它们不是 data-agent 的票**。
 
 ## Not yet specified
 

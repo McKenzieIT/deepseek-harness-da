@@ -2,7 +2,12 @@
 
 **Type**: task
 **Phase**: post-discovery
-**Status**: open
+**Status**: blocked
+**Blocked by**: [T24](T24-headless-deepseek-idle-budget.md) —— **信息阻塞**（2026-10-06 连边）：T24 是
+`node 24 / snapshots and artifacts` 的**第一项**失败，fail-fast 下它遮蔽其后 85+ 条 recorded-session
+replay。在 T24 解除遮蔽之前，本票第 2、3 项（chat-scroll 并发锚点、present-svg 连接告警）
+的清单**不完整也无法验证修好**——`replays persistent-pwsh-tool-turn` 在干净树上的状态至今未知，
+它只在 PR #161 那次越过 T24 的运行里被观测过一次，而该分支带着已被推翻的改动。
 **Assignee**: unclaimed
 **Related**: [T11](T11-test-coverage-failing.md)；已合并的 PR #149（title settlement）、#154（子进程预算）、#155（hook 预算）是同族的前序修复
 **证据**: `node 24 / snapshots and artifacts` job 104534944193（PR #155 head `7f1365dfb6`）与 job 104631963514（PR #156 head `71bf17d990`）
