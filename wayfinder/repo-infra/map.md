@@ -4,16 +4,27 @@
 
 ## Destination
 
-补齐 DSH repo 的 build/theme 基础设施缺口，让 fresh worktree 与 CI 行为一致、让被消费的 theme token 有定义：worktree-setup 自动 build workspace package（fresh worktree 不再因缺 `lib/` 假性「master break」）；`--dsw-alias-*` 被 consume 的 token 在 `design-platform.css` 有定义。
+让这个 fork 的 CI 门禁**真实可信**：`ci.yml` / `ci-master.yml` 的每条红门，要么逐项归零，要么有一条**明示的、带理由的已知基线**。抵达终点时，「CI 绿」可以直接当判据用，而不必先问「哪几条是老债」。
+
+> **destination 于 2026-10-06 按实际票集重划。** 原 destination 是「补齐 build/theme 基础设施缺口：worktree-setup 自动 build workspace package；`--dsw-alias-*` token 有定义」—— 那两件事**已于 2026-09-07 抵达**（见 Decisions so far 的 [T1](tickets/T1-worktree-builds.md) / [T2](tickets/T2-theme-token-gap.md)），而此后开的 T7–T30 全部是 CI 可靠性，与原 destination 无关。按原文，本 map 的 11 张开放票**全部越界**，`Not yet specified` 为空也正是因为旧 destination 早已走到尽头。重划使 scope 机制重新生效。
+>
+> 门禁**策略**不属本 map —— 见 [parallel-dev-cleanup](../parallel-dev-cleanup/map.md) 的 R4（required 集合）/ R3（branch protection）/ R6（直推许可集）。
 
 ## Notes
 
-- **域**：DSH repo-wide build/theme infra（pnpm workspace、worktree-setup、lefthook、ui-theme token）。
-- **每会话应查 skills**：`grilling`、`domain-modeling`。
+- **域**：DSH repo-wide CI 可靠性与门禁归零（test reliability、平台差异、lane 预算、build 产物与 token 定义的历史尾巴）。
+- **每会话应查 skills**：`grilling`、`domain-modeling`。另：测试可靠性类票见各票 `**Mode**` 行指定的 `dsh-ci-test-reliability` / `diagnosing-bugs`。
+- **CI 红门归属（2026-10-06 定）**：本 map 持有**逐项修复**（T18–T30）；门禁**策略**（required 集合、branch protection、直推许可集）属 [parallel-dev-cleanup](../parallel-dev-cleanup/map.md) 的 R4/R3/R6；**总账与合并期重基线**属 [data-agent](../data-agent/map.md) 的 `GA-FORK-CI-green` + UM 系列。**三方互不复制对方的数字** —— 本 map 是红门集合的**权威来源**，另两张引用本 map 而不自存快照。
+- **Status 词表**（封闭集；单行 `**Status**: <值>` 语法，可带 `(日期, PR #N)` 后缀）：`open` 可取且无未闭前置 · `blocked` 有未闭前置，须列 `**Blocked by**:` · `ledger` 不再承接修复、仅留施工记录、**不进 frontier** · `resolved` 验收已达成 · `resolved-pending-verification` fix 已合并但本域验收（连续两次真实运行）未凑满 · `moot` 前提已蒸发（非范围判断） · `migrated` 归属已迁出，须给目标链接。**新值须先进本表。** 其余 wayfinder map 不在本次写权内，本表仅约束本 map。
 - **常设原则**：
-  - 不改 production 行为（仅补 build 产物生成路径 + token 定义）。
   - 遵循 `packages/client/AGENTS.md` 全部纪律（如触 src）。
   - 与并发 session 协调（CB-4 zod 回归是独立 ticket，不并入——见 Out of scope）。
+  - **不接受的修法**（本域反复踩过）：放宽超时 / 加 `retry` / 改断言容忍 `null` 来让红门变绿。
+    [T19](tickets/T19-windows-projection-cache-durability.md) 推翻过一条正是这样做出来的归档结论
+    （把预算从 40ms 放宽到 5s 并宣布修好，实际在 **125 倍**预算下依然失败）。
+  - **原则更正（2026-10-06）**：旧 Notes 写「不改 production 行为（仅补 build 产物 + token 定义）」——
+    该原则已随 destination 一起失效。T19 的修法就是改 production（`storage-json` 的 `writeAtomic`
+    改用 `renameAtomicTemp`），且那是**正确**的修法：红门的根因在产品侧时就该修产品侧。
 
 ## Decisions so far
 
