@@ -11,6 +11,32 @@
 
 **需决策**：禁用 / 加守卫 / 复刻上游配置 / 重新指向？
 
+## 实际落地：候选 1（加守卫），但不是本 effort 做的（2026-10-06 复核）
+
+**答案 = 候选 1。** 守卫已在 master 上生效，由 data-agent 的
+[UM2](../../data-agent/tickets/phase-upstream-merge/UM2-ci-conflicts-reland-48-52.md)
+re-land 做掉（commit `2fa038f6e6 fix(ci): clear the merge-caused gate failures from the upstream sync`），
+本票从未被认领。2026-10-06 本 session 实测复核：
+
+- `.github/workflows/issue-policy.yml:19` → `if: ${{ github.repository_owner == 'deepseek-ai' }}`
+- `.github/workflows/issue-lifecycle.yml:43` → `github.repository_owner == 'deepseek-ai' && …`
+- `gh run list --workflow=issue-policy.yml -L 5` → **5 次全部 `conclusion: "skipped"`**
+  （最近一次 2026-09-24，`docs/w27-session-closeout-polish`）
+
+→ 本票验收「两个 job 在 fork 的 PR 上不再报 fail」**已达成**。
+
+### ⚠️ 本票原文的候选 1 写错了 owner 字符串
+
+原文建议 `github.repository_owner == 'deepseek-harness'`。**那是错的**，照它改会把上游一起 skip：
+
+- `deepseek-harness` 是 issue-management 的**组织名**（`.github/issue-management/config.json:2-3`
+  的 `organization` / `repository`，也是 `issue-lifecycle.yml:59-60` 的 App `owner`）。
+- 真正的仓库 **owner** 是 `deepseek-ai`（upstream 为 `deepseek-ai/…`，fork 为 `McKenzieIT/…`）。
+
+实际落地用的是 `'deepseek-ai'`，即「upstream 跑、fork 跳」；原文的 `'deepseek-harness'`
+在**两边都不成立**，会让上游也失去 issue 自动化。本票的证据节把 config 里的 organization
+误当成了 repository owner —— 这是原文唯一的实质错误，记在此处以免后人照抄。
+
 ## 证据（每条 file:line 均已打开核实，2026-09-06）
 
 **硬编码上游 owner/repo 三处**：
@@ -35,7 +61,8 @@
 
 ## 候选
 
-1. **加 repo 守卫（推荐）**：两个 job 加 `if: github.repository_owner == 'deepseek-harness'`。
+1. **加 repo 守卫（推荐 → 已落地，但 owner 字符串应为 `'deepseek-ai'`，见上）**：
+   两个 job 加 `if: github.repository_owner == 'deepseek-harness'` ← **原文此处写错，勿照抄**。
    代价最低、不删上游代码、fork 上变 skipped（GitHub 把 skipped 计为通过）。
    副作用：fork 失去 issue 自动化 —— 但它现在也没有。
 2. **在 fork Settings → Actions 里禁用这两个 workflow**。等效但不留代码痕迹，
@@ -49,10 +76,24 @@
 
 ## 与其他票的关系
 
-- 是 [R4](R4-ci-red-gate-policy.md)（CI 门禁策略）里**最便宜、可独立先做**的一块。
-- 若 [R3](R3-branch-protection.md) 要把这两个 check 设为 required，必须先做本票（否则永久锁死）。
+- 曾被 [R4](R4-ci-red-gate-policy.md) 标为「里面最便宜、可独立先做的一块」——
+  **该定位已失效**：本票已 resolved，不再是 R4 的一部分。R4 腾出的这个「最便宜可先做」的位置
+  由 [R6](R6-master-direct-push-permission-set.md) 接。
+- [R3](R3-branch-protection.md)：这两个 check 现为 `skipped`，GitHub 把 skipped 计为通过，
+  故它们**不再是** required 集合的锁死点。R3 的前置是 R4 + R6。
+- 归属：fork-only workflow 条件与 upstream 边界的**后续**决策属 repo-infra
+  [T29](../../repo-infra/tickets/T29-da-ci-upstream-boundary.md)（CB-5 已迁入），不在本票。
+- 同一事实的第四处记账：semantic-layer `CB5-da-ci-upstream-boundary.md:69-76` 也分析过这两个
+  workflow，该票已 `status: migrated` → T29。repo-infra
+  [T6](../../repo-infra/tickets/T6-ci-checkout-issue-policy.md) 是第三处（closed）。
 
 ## 验收
 
-- 两个 job 在 fork 的 PR 上不再报 fail（skipped 或不再触发）。
-- 决策与理由写进 map；若选候选 1/2，说明上游若要恢复该怎么做。
+- ~~两个 job 在 fork 的 PR 上不再报 fail（skipped 或不再触发）。~~
+  **已达成**（2026-10-06 实测：最近 5 次运行全部 `skipped`）。
+- ~~决策与理由写进 map；若选候选 1/2，说明上游若要恢复该怎么做。~~
+  **已达成**：决策 = 候选 1，记入 map 的 Decisions so far ⑥。
+  **上游若要恢复**：无需动作——守卫条件是 `repository_owner == 'deepseek-ai'`，
+  在上游恒真，两个 workflow 照常运行；fork 侧若将来要启用，需补
+  `vars.DSH_ISSUE_APP_CLIENT_ID` + App private key + 复刻 ProjectV2（`config.projectNumber=1`），
+  代价见候选 3。
