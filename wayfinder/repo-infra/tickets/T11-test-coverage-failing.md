@@ -2,8 +2,29 @@
 
 **Type**: task（或 research——需先定 failing test + 判定 regression vs flake）
 **Phase**: post-discovery
-**Status**: open
+**Status**: ledger（2026-10-06 判定）
 **Assignee**: unclaimed
+
+> ## ⚠️ 本票是 ledger，不承接修复，**不进 frontier**
+>
+> 2026-10-06 判定：本票已不是一张票，而是一本**施工日志**——下方 13 个
+> `2026-09-15/16 … batch` 小节，每节都是一笔已完成的修复，共 12 个 focused PR（#142–#155）。
+> 它此前 Status 为 `open` 且排在开放票清单首位，于是永远是「第一张可取票」，
+> 却没人能从它判断该取什么。
+>
+> **活的根因已拆成独立票**，取那些：
+> [T18](T18-python-wide-value-stress-portability.md)（python 宽值内存压力可移植性）、
+> [T20](T20-windows-codex-and-catalog-budget.md)（codex 竞态 + 扫描型用例预算）、
+> [T21](T21-snapshot-lane-scheduling-assertions.md)（snapshot lane 调度型断言）、
+> [T22](T22-linux-pwsh-terminal-readiness.md)（Linux pwsh readiness 竞态）、
+> [T24](T24-headless-deepseek-idle-budget.md)（headless idle 预算）、
+> [T25](T25-atomic-write-lock-eperm.md)（锁文件 EPERM）。
+> 已 resolved 的两支见 [T19](T19-windows-projection-cache-durability.md) 与 T20 part 2。
+>
+> **本票能否关掉，是本票自己的验收**：需逐条证明下方 13 节的剩余项
+> （package-invariant README 迁移、runtime fixture、UI token、CI reliability 根因）
+> 已被 T18–T25 完全覆盖。那是一张票的工作量，不在 2026-10-06 的 scoping 范围内，
+> 故本次只止住它的误导性，不替它下结论。
 **Related**: PR #44 CI `node 24 / coverage` 失败 step "Run exhaustive coverage"（job 101598597808，run 34074751506，2026-09-07 02:00，550.96s）。pre-existing（latent，非 W20；非 static gate——是真实 test 失败 OR flake）。**verify on current master cf813c18c0 before fixing。**
 
 ## Question
