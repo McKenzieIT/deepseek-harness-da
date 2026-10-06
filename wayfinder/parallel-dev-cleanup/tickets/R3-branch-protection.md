@@ -21,42 +21,48 @@ Once on, `--no-verify` is fully closed (direct pushes blocked pre-push; the loca
 
 ---
 
-## ⚠️ 2026-09-06 审计：本票**不能按原文直接执行**，新增两条硬约束
+## ⚠️ 审计：本票**不能按原文直接执行**
 
-证据见 [ci-red-audit-2026-09-06](../research/ci-red-audit-2026-09-06.md)（数字均已机械重导）。
+初次审计 2026-09-06，**2026-10-06 复测并重新归因**。
 
-### 约束 1：现在开 "Require status checks (+ CI)" 会把 master 永久锁死
+### 现状（2026-10-06 复测，与 2026-09-06 一致）
 
-先确认现状：`gh api repos/McKenzieIT/deepseek-harness-da/branches/master/protection` → **404
-"Branch not protected"**（是 404 未受保护，不是 403 无权限）。即本票尚未执行，且当前**没有任何**
-required check。
+`gh api repos/McKenzieIT/deepseek-harness-da/branches/master/protection` → **404 "Branch not protected"**
+（是 404 未受保护，不是 403 无权限）。即本票尚未执行，且当前**没有任何** required check。
 
-而 CI 在 PR 上有 **6 个 check 恒红**，全为 master 既有欠债，且经 `cmp`/`comm` 与已合并的
-PR #36 逐项比对确认与 PR diff 无关：
+### 本票等的是两条决议，**不是红门归零**
 
-- `node 24 / static` —— 17 个 gate 失败（含 402 条 jsdoc、25 个 python closure 依赖、6 条 config-catalog）
-- `node 24 / coverage` —— 512 条阈值 ERROR / **161 个文件**（`vitest.config.ts:285-292` 是
-  `perFile: true` + statements/branches/functions/lines 全 100%）
-- `node 24 / snapshots and artifacts` —— 30 个包缺 `./invariant` 导出
-- `python runtime / node24-linux-x64` —— 25 个 preset 插件未进 `python/sdk-runtime` deps
-- `windows node 24 / native complete` —— **不稳定**（失败文件集合 run-to-run 抖 ±3 个）
-- `Issue lifecycle` / `Issue policy` —— 上游专用，fork 上**永不可能**绿（见 [R5](R5-issue-workflows-upstream-only.md)）
+这是 2026-10-06 scoping 的核心更正。本票挂了一个月，此前读起来像是在等「6 个红 check 修完」——
+**不是**。它等的是两个有限的决议：
 
-→ **本票被 [R4](R4-ci-red-gate-policy.md) 阻塞**：必须先定「哪些 gate 进 required、其余怎么办」。
-本票原文写的 "require the `verify-no-production-src-on-master` check **(+ CI)**"，
-那个括号里的 "+ CI" 就是锁死点 —— 只 required 前者是可行的，加上 CI 全量不可行。
+1. **[R4](R4-ci-red-gate-policy.md) —— required 集合。**
+   本票原文写 "require the `verify-no-production-src-on-master` check **(+ CI)**"，
+   括号里的 "+ CI" 就是锁死点：只 required 前者是可行的，加上 CI 全量不可行。
+   R4 定完「哪些进 required」，本票这一侧即解除——**即使其余红门仍然红**。
+2. **[R6](R6-master-direct-push-permission-set.md) —— 直推许可集。**
+   classic branch protection 的 required status checks **对直推同样生效**，
+   所以「开 protection」会切断 CLAUDE.md 明文允许的 `wayfinder/**` 文档直推路径。
+   这不只是 "Restrict pushes" 的问题——即使只开 required checks，那条路径一样断。
 
-### 约束 2："Restrict pushes" 会切断 wayfinder 文档直推 master 的既定路径
+**红门本身的归零/冻结属 [repo-infra](../../repo-infra/map.md)（T18–T30），不是本票的前置。**
+本票不在此复制红门清单与规模数字（归属口径见 map 的 Notes）；
+当前集合以 repo-infra map 的「当前真实红门清单」为准，该清单的重建见
+repo-infra [T30](../../repo-infra/tickets/T30-ci-red-gate-rebaseline.md)。
 
-CLAUDE.md 明文允许「diff 不触及 `packages/*/src` 的纯 `wayfinder/` 文档」直推 master，
-且 `wayfinder/_templates/session-prompt.md` 与各 session prompt 的「文档直推」小节把它当标准做法
-（2026-09-06 的 CL-20 收尾 session 就走了两次：独立 worktree → cherry-pick → `git push origin HEAD:master`）。
+### 原「约束 2」已迁出
 
-开 "Restrict pushes"（只允许 PR 合并）会让这条路径失效。**开之前必须先决定文档怎么走**：
+「"Restrict pushes" 会切断 wayfinder 文档直推路径」整段（含 (a) 文档一律走 PR /
+(b) bypass actors / (c) ruleset 按路径豁免 三个候选，以及「GitHub 是否支持按路径放行」这条未验证事实）
+已于 2026-10-06 迁入 **[R6](R6-master-direct-push-permission-set.md)**，
+与 R4 的「措辞 vs 正则」附带决策合并——两者是同一问题的两种表述。
 
-- (a) 文档也一律走 PR —— 每次改 ticket/map 都开一个 PR，成本显著上升；
-- (b) 给 master 留 bypass（GitHub 的 "Allow specified actors to bypass required pull requests"）；
-- (c) 改用 ruleset 按路径豁免（`wayfinder/**` 免 PR）—— 需确认 GitHub 是否支持按路径放行
-  （**未验证**，落笔时未查 GitHub 当前能力）。
+### 执行前仍须同步的文档
 
-同时要更新 CLAUDE.md + session-prompt 模板，否则文档与实际强制策略矛盾。
+开启后要更新 CLAUDE.md + `wayfinder/_templates/session-prompt.md`，否则文档与实际强制策略矛盾。
+具体改成什么由 [R6](R6-master-direct-push-permission-set.md) 定。
+
+## 验收
+
+- master 的 `protection` 不再是 404，且 required 集合**等于** R4 的决议（不多不少）。
+- R6 决议的文档路径在新设置下**实测可走通**（不是推断——要真推一次 wayfinder 文档）。
+- CLAUDE.md 与 session-prompt 模板的措辞与实际设置一致。
