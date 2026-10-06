@@ -1,6 +1,7 @@
 # R2: 2 unmerged August branches — PR or keep
 
-Branch: (none yet — decision)
+**Status**: open（等 user/Lead 决策；无未闭 ticket 前置，故不是 `blocked`）
+**Branch**: (none yet — decision)
 
 ## Question
 

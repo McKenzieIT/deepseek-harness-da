@@ -1,6 +1,8 @@
-# R4: CI 六个 check 恒红 —— 先定门禁策略，才能开 branch protection
+# R4: 哪些 CI check 进 required —— 门禁策略
 
-Branch: 未认领（认领时按 CLAUDE.md 声明 `<type>/r4-<slug>`）
+**Status**: open
+**Branch**: 未认领（认领时按 CLAUDE.md 声明 `<type>/r4-<slug>`）
+**Blocks**: [R3](R3-branch-protection.md)
 
 ## Question
 

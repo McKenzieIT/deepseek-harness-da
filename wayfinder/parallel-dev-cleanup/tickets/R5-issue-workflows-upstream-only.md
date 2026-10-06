@@ -1,6 +1,7 @@
 # R5: `Issue lifecycle` / `Issue policy` 是上游专用，在本 fork 上永不可能绿
 
-Branch: 未认领（认领时按 CLAUDE.md 声明 `<type>/r5-<slug>`）
+**Status**: resolved (2026-09-07, `2fa038f6e6`) —— 由 data-agent [UM2](../../data-agent/tickets/phase-upstream-merge/UM2-ci-conflicts-reland-48-52.md) 的 re-land 做掉，非本 effort 走的路；2026-10-06 本 session 实测复核（见下「实际落地」）
+**Branch**: (none — 已在 master 上生效)
 
 ## Question
 

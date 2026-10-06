@@ -1,6 +1,7 @@
 # R1: 53 missing .zh.md deferred — next batch + schedule
 
-Branch: (none yet — follow-up)
+**Status**: open
+**Branch**: (none yet — follow-up)
 
 ## Question
 

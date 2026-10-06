@@ -1,6 +1,8 @@
 # R3: origin/master branch protection (admin action)
 
-Branch: (none — GitHub admin setting, session cannot enable)
+**Status**: blocked
+**Blocked by**: [R4](R4-ci-red-gate-policy.md)（required 集合）、[R6](R6-master-direct-push-permission-set.md)（直推许可集）
+**Branch**: (none — GitHub admin setting, session cannot enable)
 
 ## Question
 
