@@ -28,7 +28,10 @@ import { LlmRuntime, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as llmDashscope from '@deepseek-ai/dsh-llm-dashscope'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+// The cordis PLUGIN is the adapter's default export ({ name, provide, Config,
+// apply }); the named `SemanticLayerService` is the substrate core CLASS, which
+// `ctx.plugin` cannot mount. Mirrors apps/web/tests/semantic-graph-remote.e2e.ts.
+import SemanticLayerService from '@deepseek-ai/dsh-semantic-layer'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 

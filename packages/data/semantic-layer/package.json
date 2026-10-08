@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-semantic-layer",
-  "description": "Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening.",
+  "description": "Cordis adapter for @semantic-grounding/substrate: provides the substrate's SemanticGroundingCore as ctx.schema, bridges the fiber lifetime to core.dispose(), reactively wires the optional audit + scopes collaborators, and ships the enrichment-llm-wiring plugin that feeds ctx.llm into the enrichment seam.",
   "version": "0.1.6-alpha.2",
   "publishConfig": {
     "access": "public"
@@ -27,14 +27,11 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "js-yaml": "^4.2.0",
-    "zod": "^4.4.3"
+    "@semantic-grounding/substrate": "^0.1.6-alpha.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
-    "@deepseek-ai/dsh-atomic-write": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^"
   },
@@ -45,13 +42,8 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
-    "@deepseek-ai/dsh-atomic-write": "workspace:^",
     "@deepseek-ai/dsh-audit": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
-    "@deepseek-ai/dsh-scope-registry": "workspace:^",
-    "@types/js-yaml": "^4.0.9"
+    "@deepseek-ai/dsh-llm": "workspace:^"
   }
 }

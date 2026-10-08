@@ -1,23 +1,24 @@
-import { loadEvents, loadTables, loadConcepts } from '@deepseek-ai/dsh-semantic-layer'
 import {
+  loadEvents,
+  loadTables,
+  loadConcepts,
   EventDefinitionSchema,
   TableDefinitionSchema,
   ConceptDefinitionSchema,
-  type EventDefinition,
-  type TableDefinition,
-  type MetricDefinition,
-} from '@deepseek-ai/dsh-semantic-layer'
-import { RelationGraph, type NodeAliasData } from '@deepseek-ai/dsh-semantic-layer'
-import type { RelationDef } from '@deepseek-ai/dsh-semantic-layer/src/registry.ts'
-import { eventKindPlugin } from '@deepseek-ai/dsh-semantic-layer/src/kinds/event-kind.ts'
-import { tableKindPlugin } from '@deepseek-ai/dsh-semantic-layer/src/kinds/table-kind.ts'
-import { conceptKindPlugin } from '@deepseek-ai/dsh-semantic-layer/src/kinds/concept-kind.ts'
-import {
+  RelationGraph,
+  eventKindPlugin,
+  tableKindPlugin,
+  conceptKindPlugin,
   extractMetricsFromTable,
   extractMetricsFromEvent,
   deriveMetricRelations,
   projectMetricCorpusItem,
-} from '@deepseek-ai/dsh-semantic-layer/src/metrics.ts'
+  type EventDefinition,
+  type TableDefinition,
+  type MetricDefinition,
+  type NodeAliasData,
+  type RelationDef,
+} from '@semantic-grounding/substrate'
 import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine'
 import type { GraphSnapshotConfig, GraphSnapshot, GraphSnapshotStats, SnapshotLevel, ConceptDef } from './types.ts'
 

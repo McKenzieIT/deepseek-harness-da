@@ -13,7 +13,7 @@ import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 
 export const name = 'tool-get-definition'
 export const inject = ['tools']
@@ -124,7 +124,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
     },
     execute(args, exec) {
       if (exec.signal.aborted) throw new Error('get_definition aborted')
-      const schema = ctx.get('schema')
+      const schema = ctx.get('schema') as SemanticLayerService | undefined
       return Promise.resolve(getDefinitionResult(schema, args.name))
     },
     presentCall(args): GenericCallView {

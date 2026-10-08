@@ -16,8 +16,8 @@
  * Run: cd /Users/mckenzie/workspace/deepseek-harness-da && \
  *   pnpm exec tsx prototypes/d2c-retrieve-baseline/d2h_variant_topk_probe.ts
  */
-import { loadRetrievalCorpus, loadEvents } from '../../packages/data/semantic-layer/src/io.ts'
-import { SemanticLayerService } from '../../packages/data/semantic-layer/src/index.ts'
+import { loadRetrievalCorpus, loadEvents } from '@semantic-grounding/substrate'
+import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { apply, type SearchHit } from '../../packages/data/tool-search-data-sources/src/index.ts'
 import type { Context } from '../../vendor/cordis/src/index.ts'
 
@@ -29,11 +29,10 @@ interface ToolDef {
 }
 
 // Real SemanticLayerService over RBI — corpusVariant is mount-time config. The
-// ctx shell only needs reflect.provide (Cordis Service registration); the
-// Service delegates loadRetrievalCorpus/corpusVersion to real io over RBI.
+// core is host-neutral (config-only constructor, no Cordis ctx); it reads
+// loadRetrievalCorpus/corpusVersion from real io over RBI.
 function makeSchema(corpusVariant?: 'params+term' | 'term-only'): SemanticLayerService {
-  const ctx = { reflect: { provide: () => {} } } as unknown as Context
-  return new SemanticLayerService(ctx, {
+  return new SemanticLayerService({
     semanticRoot: RBI,
     scopeId: '',
     ...(corpusVariant !== undefined ? { corpusVariant } : {}),

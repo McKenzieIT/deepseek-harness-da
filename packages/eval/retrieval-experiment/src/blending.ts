@@ -1,4 +1,4 @@
-import type { RelationGraph } from '@deepseek-ai/dsh-semantic-layer'
+import type { RelationGraph } from '@semantic-grounding/substrate'
 import type { RetrievalHit } from '@deepseek-ai/dsh-nl2sql-engine'
 import { expandCandidates } from '@deepseek-ai/dsh-nl2sql-engine/src/ontology.ts'
 import type { GraphSnapshot, BlendingConfig, RetrievalCandidate } from './types.ts'

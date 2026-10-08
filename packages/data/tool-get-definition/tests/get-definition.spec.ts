@@ -22,7 +22,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
-import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 import {
   apply,
   formatGetDefinition,
@@ -425,7 +425,10 @@ describe('getDefinitionResult against the real SemanticLayerService', () => {
    * their null contract the stubs above emulate are the substrate's real shape.
    */
   function realSchema(): SemanticLayerService {
-    return new SemanticLayerService(new Context(), { semanticRoot: root })
+    // The core is host-neutral (config-only constructor): the throwaway cordis
+    // Context the old Service needed is gone, and the instance is handed
+    // straight to `getDefinitionResult` without a seam.
+    return new SemanticLayerService({ semanticRoot: root })
   }
 
   it('resolves a YAML table from the real substrate as kind "table"', () => {

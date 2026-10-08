@@ -34,8 +34,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { TableDefinition } from '@deepseek-ai/dsh-semantic-layer'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+import type { TableDefinition } from '@semantic-grounding/substrate'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 
 export const name = 'tool-load-table-definition'
 export const inject = ['tools']
@@ -409,7 +409,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       if (exec.signal.aborted) {
         throw new Error('load_table_definition aborted before loading')
       }
-      const schema = ctx.get('schema')
+      const schema = ctx.get('schema') as SemanticLayerService | undefined
       const q = ctx.get('query') as { qualifyTable?: (n: string, o?: string) => string } | undefined
       const qualify = q?.qualifyTable?.bind(q)
       return loadTableDefinitionResult(schema, args.table_name, qualify)

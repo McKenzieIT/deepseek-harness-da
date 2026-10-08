@@ -6,6 +6,12 @@ apps/desktop/*.p12
 node_modules/
 lib/
 *.tsbuildinfo
+# Vendored npm tarballs are tracked ON PURPOSE. pnpm-workspace.yaml pins
+# @semantic-grounding/substrate to vendor-tarballs/*.tgz through a `file:`
+# override, so a clean clone cannot resolve its install without them. This
+# negation is defensive — there is no *.tgz rule today, and adding one must not
+# silently break installs. See vendor-tarballs/README.md.
+!vendor-tarballs/*.tgz
 pnpm-debug.log
 .pnpm-store/
 .cache/

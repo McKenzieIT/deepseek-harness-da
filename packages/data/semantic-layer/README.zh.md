@@ -1,5 +1,5 @@
 ---
-description: "TODO: translate: Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening."
+description: "@semantic-grounding/substrate 的 cordis 适配器：把 substrate 的 SemanticGroundingCore 作为 ctx.schema 提供，把 fiber 生命周期桥接到 core.dispose()，响应式接入可选的 audit 与 scopes 协作者，并提供把 ctx.llm 接入 enrichment seam 的 enrichment-llm-wiring 插件。"
 kind: "package-reference"
 ---
 
@@ -9,91 +9,18 @@ kind: "package-reference"
 
 ## 概述
 
-TODO: 填写概述——占位内容来自 package.json 的 description 字段。
-
-TODO: translate: Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening.
+`@semantic-grounding/substrate`（以 tarball 形式 vendored 在 `vendor-tarballs/` 下）之上的一层很薄的 cordis 适配器。语义层本身——定义 kind、别名与关系图、检索投影、enrichment、两级审计写路径——现在都住在 substrate 里，以 vendored tarball 的形式被消费。本包只是把它挂载进 dsh 的那个约 40 行的宿主外壳。
 
 ## 目录
 
-- [P6b grilling（5 个决策，全选 A）](#p6b-grilling-5-decisions-all--a)
-- [结构](#structure)
-- [`ctx.schema` seam](#ctxschema-seam)
-- [P13b swap](#p13b-swap)
-- [图投影与 registry 生命周期 (W27)](#graph-projection-and-registry-lifecycle-w27)
-- [验证](#verification)
 - [开发备注](#dev-note)
-- [Model Experience](#model-experience)
-- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
-
-
-data agent 的 semantic-layer **substrate**：zod 镜像的 RBI pydantic `EventDefinition` / `TableDefinition` + reader/writer + `BasicIndex` + write-tiers + `ctx.schema` seam。P6b 生产硬化（移植一次性 `prototypes/p6-semantic-layer/`）。
-
-Semantic layer 是 data agent 的 **一等公民** — NL→SQL 的成功依赖它（MDL / metric layer / Text2DSL）。substrate 保持与 RBI 531 条精选 tables/events/terminology 的交叉兼容（zod 镜像 pydantic `extra=allow` / `model_validator` / `canonicalize_type` / round-trip）。
-
-<a id="p6b-grilling-5-decisions-all--a"></a>
-## P6b grilling（5 个决策，全选 A）
-
-- **Q1 包形态**：`packages/data/semantic-layer/` 单包（`@deepseek-ai/dsh-semantic-layer`），group=data（与 `audit` / `phase-gate` / `nl2sql-engine` 一致）。`load_*` model-facing tools 延期为独立 tool 包（镜像 `tool-search-data-sources`；preset 已命名为 `dsh-tool-load-table-definition` / `dsh-tool-load-event-definition`）。独立分析 grounded 此决策：data capability packages 为单包 Services；tools 始终与其 Service 包分离；独立 `semantic/` group 对单包属过度抽象。
-- **Q2 seam 范围**：`ctx.schema` 覆盖 live-engine（`discover` / `describe` / `sample`）和 substrate definitions（`loadEventDefinition` / `loadTableDefinition`）。P13b `CriticGuardData` 切换到 `ctx.schema.load_*`（params_fields / partitions）。
-- **Q3 live-engine 实现**：延期 — P6b 发布 Service Definition + substrate + 同步 demo/测试用 stand-in provider；真实 query provider（query-maxcompute sidecar 添加 schema tools，或独立 `schema-maxcompute`）为后续工作。`discover` / `describe` / `sample` 在未挂载时抛 "no provider"；P13b swap 仅需 substrate definitions，故不受阻。
-- **Q4 Tier-2 audit**：经 `ctx.audit.recordTier2Write`（P8b 真实 sqlite audit）路由，不用原型的 flat JSON log — 统一审计轨迹，内网安全优先。substrate `Tier2Recorder` 接口由 `ctx.audit` 满足；audit 未挂载时 Tier-2 写操作 fail-loud（D5 "不可关"）。
-- **grounded**：`zod`（镜像 pydantic；`schemastery` 无 `.passthrough`）+ `js-yaml` substrate 依赖；复用 `@deepseek-ai/dsh-atomic-write`（`writeFileAtomic`：temp+wx+rename，mode 打戳）做原子写入。
-
-<a id="structure"></a>
-## 结构
-
-| 文件 | 职责 |
-| --- | --- |
-| `src/types.ts` | zod schemas 镜像 RBI pydantic（`EventDefinition` / `TableDefinition` + 子模型、`TableMeta`、`canonicalizeType`）。 |
-| `src/io.ts` | reader（sync）/ writer（async via `writeFileAtomic`）/ sync-write / cache-invalidate（ADR-0011）/ `Tier2Recorder` 接口。 |
-| `src/basic-index.ts` | `BasicIndex` — 无依赖查找加速器；失效时重建（非验证缓存）。 |
-| `src/pending.ts` | Tier-1 pending 队列（suggest -> pending -> approve；approve 侧由 P9 门控）。Tier-2 是 `ctx.audit`（不在此处）。 |
-| `src/index.ts` | `ctx.schema` Service Definition（`SemanticLayerService`）+ `SchemaProvider` 接口 + `StandInSchemaProvider` + substrate re-exports。 |
-
-<a id="ctxschema-seam"></a>
-## `ctx.schema` seam
-
-```ts
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
-declare module '@deepseek-ai/cordis' { interface Context { schema: SemanticLayerService } }
-```
-
-- `loadEventDefinition(name)` / `loadTableDefinition(name)` — substrate definitions（P13b swap 目标：`params_fields` / `partitions`）。
-- `discover(scopeId, kind?)` / `describe(table)` / `sample(table, n?)` — live-engine（延期；`setSchemaProvider` 挂载真实 provider）。
-- `syncWrite(metas, opts)` / `updateTableMeta(name, updates, opts)` — Tier-2 持久化写入经 `ctx.audit.recordTier2Write`。
-
-<a id="p13b-swap"></a>
-## P13b swap
-
-P13b 的本地 `CriticGuardData`（params_fields/partitions 来自精简 YAML reader）additive swap 到 `ctx.schema.load_*`。`CriticCtx{candidateTables, eventParams, partitionCols}` 契约不变；P13b engine 逻辑不变。`makeCriticCtx({ candidateTables, eventParams: EventDefinition.params_fields, partitionCols: TableDefinition.partitions.map(p => p.name) })`。
-
-<a id="graph-projection-and-registry-lifecycle-w27"></a>
-
-## 图投影与 registry 生命周期 (W27)
-
-语义图投影由 **registry 驱动**：`projectGraphNodes()` 迭代每个已注册 kind 的 `toGraphNode(def)`——无手写三组平行循环——因此构建后注册的 kind 无需修改网关即可进入图。`buildGraph(root)` 以同样方式收集关系（迭代 registry）。kind 必须把 `RelationDef.target` 声明为目标 kind 在 `toGraphNode` 中铸造的规范节点 id，含前缀（`chart:first`，而非 `first`）：构建过程原样存储 target，因为两个 kind 可能持有同名节点，把裸名映射到带前缀 id 会静默把边路由到错误节点。target 未命中任何已投影节点时不产生边。
-
-**声明式能力，而非 kind 字符串。** `DataSourceKindPlugin` 的两个可选字段承载了投影本来会硬编码为 `plugin.kind === 'table' | 'event' | 'concept'` 的判断，因此构建后注册的 kind 拥有与内置 kind 完全相同的触达范围：
-
-- `derivedNodes`——一个 kind 从自身每条定义派生出的虚拟定义（`derive` / `toGraphNode` / `relations` / `toCorpusItem`）。`metric` 是已发布的用例：`table` 与 `event` 各自为内联 `metrics:` 的每一项派生一个 metric，这些 metric 仅通过该 contributor 进入节点投影、图边、别名索引与检索 corpus。
-- `grouping`——声明本 kind 的节点为分类组，其他 kind 通过在 `GraphNodeProjection.domains` 中写出组名加入。`concept` 是已发布的用例：构建过程为每个解析成功的组名派生一条 `group → member` 边（concept 为 `related_to`），对未解析的组名跳过并通过 `getDanglingDomainRefs()` 报告，且分组节点永不成为自身成员。
-
-`projectGraphNodes({ includeDerived })`（默认 `true`）跳过调用方会丢弃的派生节点。Schema Gateway 传入它自己的 `includeMetrics` 查询字段，因此不需要 metric 的图请求不再为派生付费；又因为派生节点现在来自 registry 循环已加载的定义，投影不再执行第二次完整的 `tables/` + `events/` 扫描。
-
-**Disposer 与缓存失效。** `registry.register(plugin)` 返回幂等 disposer，仅撤销本次贡献。registry 在增删时均触发 `onChange` 监听；`SemanticLayerService` 在构造函数中注册一个监听来失效 `graphCache` + `graphCacheByScope`，因此已销毁 kind 的节点/边不会残留，重新注册的 kind 无需重启即可流过。使用 `ctx.effect(() => registry.register(plugin))` 安装贡献，使其生命周期跟踪所属 fiber。构造函数无条件通过 `ctx.effect` 装配该监听与三个内置 kind：缺少 fiber 生命周期的 context 会在构造时失败，而不是产出一个图缓存永不失效的 service。
-
-**输入契约。** `RelationDef.type` 是开放 `string`（`joins` | `derived_from` | `related_to` 或 kind 声明的类型）；`GraphNodeProjection` 携带纯 `string` id + 开放 `kind`。Schema Gateway 在远程边界 brand `id`。`storageDir` 是目录名而非 loader 选择器：三种专用布局（`events` domain 子目录、扁平 `tables`、扁平 `concepts`）按内置 plugin 实例身份选择，因此声明 `storageDir: 'tables'` 的注册 kind 仍按通用方式读取并由它自己的 `schema.safeParse` 校验，不会收到已解析的 `TableDefinition` 对象。`io.ts` 的 `loadDomains` 拒绝 YAML 数组（使用 `isPlainObject`，非 `typeof === 'object'`），使列表形状的 `domains.yaml` 降级为 `{}`。
-
-<a id="verification"></a>
-## 验证
-
-```sh
-tsc -b packages/data/semantic-layer/tsconfig.json   # typecheck
-pnpm vitest run packages/data/semantic-layer        # 5 scenarios (4 prototype + P13b swap)
-pnpm verify-cordis-config                            # bundle/preset mount resolves
-```
-
-Bundle 连线（`packages/bundle/data-agent/cordis.patch.yml` 中的 `semantic-layer` 行）在 live-engine provider + `load_*` tool 包就绪后作为后续工作添加。
+- [提供了什么](#what-it-provides)
+- [形态：`ctx.schema` 就是 core 本身](#shape-ctxschema-is-the-core)
+- [可选协作者](#optional-collaborators)
+- [结构](#structure)
+- [验证](#verification)
+- [模型体验](#model-experience)
+- [已知限制与延期工作](#known-limitations-and-deferred-work)
 
 未发布运行时 invariant companion，因为 `@deepseek-ai/dsh-semantic-layer` 不拥有可能与其运行时状态独立发生分歧的可观测关系。
 
@@ -102,6 +29,53 @@ Bundle 连线（`packages/bundle/data-agent/cordis.patch.yml` 中的 `semantic-l
 
 无。
 
+<a id="what-it-provides"></a>
+## 提供了什么
+
+两个 cordis 插件：
+
+| 插件 | 入口 | 职责 |
+| --- | --- | --- |
+| `semantic-layer` | `src/index.ts`（default export） | 构造 `SemanticGroundingCore` 并作为 `ctx.schema` 提供。 |
+| `enrichment-llm-wiring` | `src/llm-wiring-plugin.ts` | 把 `ctx.llm.stream()` 适配成 substrate 的 `TextLlm` 并调用 `wireEnrichmentLlm`，从而启用 LLM 语义轮。 |
+
+两者由 `packages/bundle/data-agent/cordis.patch.yml` 作为两个独立的行分别挂载——第二个走的是本包 `exports["./src/*"]` 的深路径。
+
+<a id="shape-ctxschema-is-the-core"></a>
+## 形态：`ctx.schema` 就是 core 本身
+
+`apply` 直接提供 `SemanticGroundingCore` 实例，不做任何转发。`SemanticGroundingCore` 声明了 24 个 `private` 成员，因此它是**名义**类型：一个转发式的 `class extends Service` 包装器无法赋值给它，绑定 tarball 的消费方也就永远无法用 substrate 自己的类来标注 `ctx.schema`。直接提供实例让每一处 `as SemanticGroundingCore` 断言都名副其实，可触达全部 32 个公开成员，也不留下任何会漂移的转发代码。
+
+`ctx.effect(() => () => core.dispose())` 是 fiber↔core 的生命周期桥。`core.dispose()` 会释放 core 自己持有的数据源 kind 注册与关系图缓存失效监听；没有它，被撤销的 kind 的节点会在 fiber 重载后残留在缓存图中。
+
+<a id="optional-collaborators"></a>
+## 可选协作者
+
+`audit` 与 `scopes` 被刻意排除在插件的 `inject` 列表之外——无论它们是否存在，`ctx.schema` 都必须能挂载。它们通过嵌套的 `ctx.inject(...)` 子 fiber 接入，而子 fiber 只约束自身。接入是响应式而非一次性的，因为宿主可能在语义层挂载**之后**才提供这两个服务；一次性的 apply 期探测会把 `undefined` 永久锁死。
+
+在 `audit` 未挂载期间，Tier-2 recorder 保持 `undefined`，并且**任何可审计写入都会抛错**。这是刻意的（D5 / ADR-0001）：这里没有静默的 no-op recorder。关闭审计只有在显式传入一个 no-op recorder 时才成立，绝不能是接线事故的结果。
+
+<a id="structure"></a>
+## 结构
+
+```
+src/index.ts              the semantic-layer adapter plugin (ctx.schema)
+src/llm-wiring-plugin.ts  the enrichment-llm-wiring plugin
+tests/service-wiring.spec.ts   the lifetime bridge (1 test)
+tests/llm-wiring-cl8.spec.ts   provider/model resolution (5 tests)
+```
+
+substrate 自己的领域测试套件在 substrate 仓库里是绿的；dsh 不重复测试自己的依赖。本包唯一自有的行为就是生命周期桥与 CL8 的 provider/model 解析，这正是 `tests/` 所覆盖的内容。
+
+<a id="verification"></a>
+## 验证
+
+```bash
+pnpm vitest run packages/data/semantic-layer/tests/
+pnpm run verify-cordis-config
+```
+
+`apps/web/tests/semantic-graph-remote.e2e.ts` 是本适配器的契约测试：它跨真实 Remote 边界验证 default export、`ctx.schema` 的 Context 增强、`Config` schema 以及 `schema` 这个服务名。
 
 <a id="model-experience"></a>
 ## Model Experience
@@ -154,9 +128,8 @@ Substrate definitions 在磁盘上稳定，故其渲染上下文作为可缓存�
 <a id="known-limitations-and-deferred-work"></a>
 ## Known Limitations and Deferred Work
 
-- **Live-engine provider** — `discover` / `describe` / `sample` 在真实 query provider（query-maxcompute sidecar 或独立 `schema-maxcompute`）挂载前抛 "no provider"。延期至后续票。
-- **`load_*` model-facing tool 包** — `load_table_definition` / `load_event_definition` 延期为独立 tool 包（preset 中命名为 `dsh-tool-load-table-definition` / `dsh-tool-load-event-definition`）。
-- **写入时规范化** — `writeTable` / `updateTableMeta` 写入原始数据；磁盘上对规范格式的忠实性延期（加载数据已为规范格式，P13b swap 不受影响）。
-- **定义名路径穿越防护** — 拒绝定义名中的 `/` `\` `..` 延期（内网安全优先的纵深防御；当前无 model-facing tool 直接调用这些方法）。
-- **`updateTableMeta` 并发锁** — read-merge-write 应包裹 `withFileLock`（`@deepseek-ai/dsh-atomic-write`）以保证并发安全。自原型延期。
-- **Bundle 连线** — `cordis.patch.yml` 中的 `semantic-layer` 行待 live-engine provider + tool 包就绪后添加。
+- **领域相关的限制随领域代码一起搬走了。** live-engine provider、写入时规范化、定义名路径穿越防护、`updateTableMeta` 并发锁现在都是 `@semantic-grounding/substrate` 的事，在那边跟踪，不在这里。
+- **`ctx.schema` 不在本仓生成的 Cordis catalog 里。** adapter 提供的实例，其类随 tarball 发布，所以 catalog 那个只走源码的投影渲染不出来；改为在 `SERVICE_WALK_EXEMPTIONS` 里具名。这个接缝的 API 参考该住哪，仍是未决问题。
+- **`SemanticLayerConfig` 在本地声明，需要人工跟住底座。** 插件的 config 类型必须住在自己的包里（`gen-config-catalog` 强制），所以这个 interface 和它的 `corpusVariant` 联合类型是对底座的有意复制；底座那边改了不会让这里编译失败，而是静默漂移。
+- **底座不是 release member，所以它没发布之前 dsh 发不了版。** 本包**是** release member（`packages/*/*`），所以 `release:pack` 会打包它，而 `release:verify-packed-install` 会去 registry 解析 `@semantic-grounding/substrate` —— 那里目前是 E404，因为 `file:` override 只在本工作区内生效。**发布 `@semantic-grounding/substrate` 是下一次 dsh 发版的阻塞前置条件。** （该发布 lane 今天在 master 上本来就因为一个无关的 `koffi` 原生构建而红着，且发布只能由 `workflow_dispatch` 手动触发，所以这条没有阻塞本次切换。）
+- **`setScopeRegistry(ctx.get('scopes') as never)` 是未检查的强制转换。** 底座没有导出 `ScopeRegistryLike`，所以 scope registry 的形状在这个边界上没有被校验。

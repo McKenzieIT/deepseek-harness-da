@@ -32,6 +32,41 @@ import yaml from 'js-yaml'
 import { EvidenceQueryService, EvalResultStore, FileBackedEvalResultStore } from '../src/index.ts'
 import type { EvalResultRecord } from '../src/types.ts'
 
+/**
+ * Mount the semantic-grounding core under the `schema` seam the way the
+ * `@deepseek-ai/dsh-semantic-layer` adapter's `apply()` does.
+ *
+ * The core takes its optional collaborators by setter, so `ctx.provide` alone
+ * leaves the scope registry unwired and every scope lookup silently falls back
+ * to the config root instead of resolving (or failing loud on) a named scope.
+ * `audit` is passed through as-is — `undefined` is correct and keeps Tier-2
+ * writes throwing (D5 / ADR-0001); never substitute a no-op recorder.
+ */
+function provideSchema(ctx: Context, config: ConstructorParameters<typeof SemanticLayerService>[0]): SemanticLayerService {
+  const core = new SemanticLayerService(config)
+  // Immediate set covers collaborators already present at mount time; the
+  // nested `ctx.inject` fibers cover the ones a test provides afterwards, which
+  // is how the adapter's `apply()` does it and what the pre-cutover Service got
+  // for free by re-probing `ctx.get(...)` on every use.
+  core.setScopeRegistry(ctx.get('scopes') as never)
+  core.setTier2Recorder(ctx.get('audit'))
+  ctx.inject(['scopes'], (scopeCtx: Context) => {
+    scopeCtx.effect(() => {
+      core.setScopeRegistry(scopeCtx.get('scopes') as never)
+      return () => { core.setScopeRegistry(undefined) }
+    })
+  })
+  ctx.inject(['audit'], (auditCtx: Context) => {
+    auditCtx.effect(() => {
+      core.setTier2Recorder(auditCtx.get('audit'))
+      return () => { core.setTier2Recorder(undefined) }
+    })
+  })
+  ctx.provide('schema', core)
+  return core
+}
+
+
 const dirs: string[] = []
 
 afterEach(() => {
@@ -246,7 +281,7 @@ describe('GA-GT1 Phase 3b — EvidenceQueryService read methods scopeId (D5.2)',
   // (c1) scopeId overrides active scope for coverageQuery
   it('coverageQuery(scopeId) resolves the named scope root (active = the OTHER scope)', () => {
     const { ctx } = setupMultiScope() // active = scope-A (2 tables)
-    new SemanticLayerService(ctx, { semanticRoot: 'unused' })
+    provideSchema(ctx, { semanticRoot: 'unused' })
     const svc = new EvidenceQueryService(ctx)
 
     // scope-A has 2 tables, scope-B has 1 table
@@ -258,7 +293,7 @@ describe('GA-GT1 Phase 3b — EvidenceQueryService read methods scopeId (D5.2)',
   // (c2) scopeId undefined → active scope (backward-compatible)
   it('coverageQuery() (no scopeId) resolves the ACTIVE scope (backward-compatible)', () => {
     const { ctx, scopes } = setupMultiScope() // active = scope-A
-    new SemanticLayerService(ctx, { semanticRoot: 'unused' })
+    provideSchema(ctx, { semanticRoot: 'unused' })
     const svc = new EvidenceQueryService(ctx)
 
     // No scopeId → active (scope-A) → 2 tables
@@ -272,7 +307,7 @@ describe('GA-GT1 Phase 3b — EvidenceQueryService read methods scopeId (D5.2)',
   // (c3) assetHealth scopeId — cross-scope isolation (table in scope-A NOT found in scope-B)
   it('assetHealth(assetId, scopeId) finds the asset only in the correct scope (no cross-scope leak)', () => {
     const { ctx } = setupMultiScope() // scope-A: tbl_a1, tbl_a2; scope-B: tbl_b1
-    new SemanticLayerService(ctx, { semanticRoot: 'unused' })
+    provideSchema(ctx, { semanticRoot: 'unused' })
     const svc = new EvidenceQueryService(ctx)
 
     // tbl_a1 is in scope-A, NOT in scope-B
@@ -287,7 +322,7 @@ describe('GA-GT1 Phase 3b — EvidenceQueryService read methods scopeId (D5.2)',
   // (c4) assetHealth no scopeId → active scope
   it('assetHealth(assetId) (no scopeId) resolves the active scope (backward-compatible)', () => {
     const { ctx, scopes } = setupMultiScope() // active = scope-A
-    new SemanticLayerService(ctx, { semanticRoot: 'unused' })
+    provideSchema(ctx, { semanticRoot: 'unused' })
     const svc = new EvidenceQueryService(ctx)
 
     // active = scope-A → tbl_a1 found, tbl_b1 NOT found
@@ -303,7 +338,7 @@ describe('GA-GT1 Phase 3b — EvidenceQueryService read methods scopeId (D5.2)',
   // (c5) registry unmounted + scopeId provided → falls back to cfg root (no throw)
   it('registry unmounted + scopeId provided → falls back to cfg root (test stand-in, no throw)', () => {
     const { ctx, root } = setupUnmounted() // no scope-registry; cfg root has tbl_cfg
-    new SemanticLayerService(ctx, { semanticRoot: root, scopeId: 'cfg-scope' })
+    provideSchema(ctx, { semanticRoot: root, scopeId: 'cfg-scope' })
     const svc = new EvidenceQueryService(ctx)
 
     // scopeId provided but registry unmounted → resolveRoot falls back to ctx.schema.semanticRoot (cfg root)
@@ -318,7 +353,7 @@ describe('GA-GT1 Phase 3b — EvidenceQueryService read methods scopeId (D5.2)',
 describe('GA-GT1 Phase 3b — EvidenceQueryService fail-loud (D5.2)', () => {
   it('scopeId not found in mounted registry → throws (no silent fallback to active)', () => {
     const { ctx } = setupMultiScope() // registry mounted with scope-A + scope-B
-    new SemanticLayerService(ctx, { semanticRoot: 'unused' })
+    provideSchema(ctx, { semanticRoot: 'unused' })
     const svc = new EvidenceQueryService(ctx)
 
     // Every scopeId-accepting read must throw, not silently fall back to active

@@ -21,8 +21,7 @@ import { join } from 'node:path'
 import yaml from 'js-yaml'
 import type { Context } from '@deepseek-ai/cordis'
 import type { CallerIdentity } from '@deepseek-ai/dsh-identity'
-import { TableDefinitionSchema } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
-import type { Tier2Recorder } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
+import { TableDefinitionSchema, type Tier2Recorder } from '@semantic-grounding/substrate'
 import {
   apply,
   validateTableName,

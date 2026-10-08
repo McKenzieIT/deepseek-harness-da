@@ -1,4 +1,4 @@
-import type { RelationGraph } from '@deepseek-ai/dsh-semantic-layer'
+import type { RelationGraph } from '@semantic-grounding/substrate'
 import type { Bm25Linker } from '@deepseek-ai/dsh-nl2sql-engine'
 
 /** ConceptDef */

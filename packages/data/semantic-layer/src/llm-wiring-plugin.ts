@@ -12,7 +12,14 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { wireEnrichmentLlm, type TextLlm } from './index.ts'
+import { wireEnrichmentLlm, type TextLlm } from '@semantic-grounding/substrate'
+
+// No `declare module '@deepseek-ai/cordis'` block here on purpose. `ctx.schema`
+// is declared by `./index.ts` and `ctx.llm` by `@deepseek-ai/dsh-llm` (as
+// `llm: LlmRuntime`); re-declaring either would be two differing declarations
+// of one property in a merged interface, which is a TS error. The `dsh-llm`
+// augmentation reaches this program through the dynamic import below plus the
+// package's `../../llm/llm` project reference.
 
 export const name = 'enrichment-llm-wiring'
 export const inject = ['schema', 'llm']
@@ -36,7 +43,7 @@ export const Config: z<Config> = z.object({
  * `wireEnrichmentLlm`, so enrichment runs its deterministic round only). An
  * unconfigured enrichment capability must not take down the whole bundle
  * group at boot (CB-1a α; the substrate treats an unwired llmCall as
- * deterministic-only — see `enrichment.ts` / `setLlmCall`).
+ * deterministic-only).
  *
  * CL8 centralization: this resolver (env-var names) is duplicated locally in
  * `eval-cli/src/main.ts` and `tool-search-data-sources/src/expand-query.ts`.
@@ -59,7 +66,7 @@ export function apply(ctx: Context, config: Config = {}): void {
   // CB-1a α: unconfigured enrichment is non-fatal at boot — warn + run the
   // deterministic round only (skip wireEnrichmentLlm). Throwing here rolls
   // back the whole bundle group (vendor all-or-nothing) and drops the
-  // semantic-layer UI; see CB-1 blocker 2 / CB-3 S2.
+  // semantic-layer UI.
   const { provider, model } = resolveEnrichmentLlmConfig({ provider: config.provider, model: config.model })
   if (!provider || !model) {
     ctx.logger.warn('enrichment-llm-wiring: no provider/model configured; enrichment runs deterministic-only. Set ENRICHMENT_LLM_PROVIDER/MODEL or the settings item (CB-2, deferred) to enable the semantic round.')
@@ -68,8 +75,8 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   const textLlm: TextLlm = {
     async text(prompt: string): Promise<string> {
-      // dsh-llm is an optional peer (peerDependenciesMeta): load it at call
-      // time so module scope never depends on an absent optional dependency.
+      // dsh-llm is an optional peer: load it at call time so module scope
+      // never depends on an absent optional dependency.
       const { BlockAssembler, createUserMessage } = await import('@deepseek-ai/dsh-llm')
       const assembler = new BlockAssembler()
       const options = {

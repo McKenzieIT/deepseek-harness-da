@@ -41,21 +41,17 @@ import {
   buildDimInventory,
   discoverRelationsDeterministic,
   discoverEventRelationsDeterministic,
-} from '../packages/data/semantic-layer/src/enrichment.ts'
-import {
   loadTables,
   writeTable,
   loadEvents,
   writeEventYaml,
   dumpYaml,
-} from '../packages/data/semantic-layer/src/io.ts'
-import {
   TableDefinitionSchema,
   EventDefinitionSchema,
   DimensionRefSchema,
   type DimensionRef,
   type TableDefinition,
-} from '../packages/data/semantic-layer/src/types.ts'
+} from '@semantic-grounding/substrate'
 
 const K11_LAYER = './examples/k11-semantic-layer'
 const DEFAULT_PARTITION_BLOCKLIST = ['ds', 'pt', 'dt']

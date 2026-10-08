@@ -35,9 +35,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { EventDefinition } from '@deepseek-ai/dsh-semantic-layer'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
-import { loadConfig } from '@deepseek-ai/dsh-semantic-layer'
+import { loadConfig, type EventDefinition } from '@semantic-grounding/substrate'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 
 export const name = 'tool-load-event-definition'
 export const inject = ['tools']
@@ -471,7 +470,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       if (exec.signal.aborted) {
         throw new Error('load_event_definition aborted before loading')
       }
-      const schema = ctx.get('schema')
+      const schema = ctx.get('schema') as SemanticLayerService | undefined
       return loadEventDefinitionResult(schema, args.event_name)
     },
   }))

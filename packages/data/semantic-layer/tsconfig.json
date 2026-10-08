@@ -21,9 +21,6 @@
       "path": "../../llm/llm"
     },
     {
-      "path": "../../util/atomic-write"
-    },
-    {
       "path": "../../data/audit"
     }
   ]

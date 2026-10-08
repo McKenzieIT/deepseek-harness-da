@@ -355,7 +355,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // failure must not break the business write.
       if (before !== undefined) {
         try {
-          const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer')
+          const { dumpYaml } = await import('@semantic-grounding/substrate')
           const beforeYaml = dumpYaml(before)
           audit.store.recordSnapshot(result.asset_name, kind as 'table' | 'event', beforeYaml)
         } catch { /* fail-silent */ }
@@ -418,7 +418,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
              transform drops comments written between `else` and `if`. */
         } else if (kind === 'concept') {
           /* v8 ignore stop */
-          const { dumpYaml, invalidateCaches } = await import('@deepseek-ai/dsh-semantic-layer')
+          const { dumpYaml, invalidateCaches } = await import('@semantic-grounding/substrate')
           const { writeFileAtomic } = await import('@deepseek-ai/dsh-atomic-write')
           const path = await import('node:path')
           const { mkdirSync } = await import('node:fs')

@@ -10,7 +10,7 @@ import {
   discoverAltLabelsResult,
   type DiscoverAltLabelsResult,
 } from '../src/index.ts'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 
 function stubSchema(summary: { enriched: number; written: number; errors: string[] }, optsSink?: Record<string, unknown>[]) {
   return {

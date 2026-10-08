@@ -25,6 +25,9 @@
     },
     {
       "path": "../audit"
+    },
+    {
+      "path": "../../util/atomic-write"
     }
   ]
 }

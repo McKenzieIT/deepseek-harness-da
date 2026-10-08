@@ -10,7 +10,7 @@
  *
  * `loadTables` / `loadEvents` read the real filesystem (semantic-layer
  * `src/io.ts`), so the scan cases build a throwaway semantic root the same way
- * `packages/data/semantic-layer/tests/snapshot.spec.ts` does: `mkdtempSync`
+ * `@semantic-grounding/substrate/tests/snapshot.spec.ts` does: `mkdtempSync`
  * under the OS temp dir (a private, unpredictable root per case) plus
  * `dumpYaml` definitions, torn down in `afterEach`.
  *
@@ -22,8 +22,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
-import { dumpYaml } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import { dumpYaml } from '@semantic-grounding/substrate'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 import {
   apply,
   formatGetCoverage,

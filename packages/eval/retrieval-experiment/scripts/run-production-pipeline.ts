@@ -15,8 +15,7 @@
  *   - No qualification (no ctx.query; candidates stay un-qualified)
  *   - No ctx.retrieval (uses the ctx.schema enriched BM25 path)
  */
-import { Context } from '@deepseek-ai/cordis'
-import { SemanticLayerService } from '../../../../packages/data/semantic-layer/src/index.ts'
+import { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 import { apply, type SearchHit, type Config } from '../../../../packages/data/tool-search-data-sources/src/index.ts'
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -108,8 +107,7 @@ interface ToolDef {
 }
 
 function buildTool(blendingMode: 'strategy-b' | 'continuous-blend'): ToolDef {
-  const cordisCtx = new Context()
-  const svc = new SemanticLayerService(cordisCtx, { semanticRoot })
+  const svc = new SemanticLayerService({ semanticRoot })
 
   let toolDef: ToolDef | undefined
   const toolCtx = {

@@ -8,7 +8,7 @@
  * Usage:
  *   npx tsx scripts/seed-event-external-refs.ts
  */
-import { enrichAllEvents } from '../packages/data/semantic-layer/src/enrichment.ts'
+import { enrichAllEvents } from '@semantic-grounding/substrate'
 
 const root = './examples/k11-semantic-layer'
 

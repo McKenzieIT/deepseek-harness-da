@@ -52,13 +52,15 @@
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-typert-protocol": "workspace:^",
     "@deepseek-ai/dsh-semantic-layer": "workspace:^",
-    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^"
+    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@semantic-grounding/substrate": "^0.1.6-alpha.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-typert-protocol": "workspace:^",
     "@deepseek-ai/dsh-semantic-layer": "workspace:^",
-    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^"
+    "@deepseek-ai/dsh-nl2sql-engine": "workspace:^",
+    "@semantic-grounding/substrate": "^0.1.6-alpha.2"
   }
 }
