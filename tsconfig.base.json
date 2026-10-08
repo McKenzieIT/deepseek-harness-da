@@ -300,7 +300,7 @@
       // the generated bare-name aliases do not cover.
       "@deepseek-ai/dsh-embedder/src/*": ["./packages/embedder/embedder/src/*"],
       "@deepseek-ai/dsh-retrieval/src/*": ["./packages/retrieval/retrieval/src/*"],
-      "@deepseek-ai/dsh-semantic-layer/src/*": ["./packages/data/semantic-layer/src/*"],
+      "@deepseek-ai/dsh-semantic-layer/src/llm-wiring-plugin.ts": ["./packages/data/semantic-layer/src/llm-wiring-plugin.ts"],
       "@deepseek-ai/dsh-result-cache/src/*": ["./packages/data/result-cache/src/*"],
       "@deepseek-ai/dsh-evidence-query/src/gateway.ts": ["./packages/data/evidence-query/src/gateway.ts"],
       "@deepseek-ai/dsh-management-context/src/*": ["./packages/data/management-context/src/*"],

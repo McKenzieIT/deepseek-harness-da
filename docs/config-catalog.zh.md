@@ -2733,36 +2733,30 @@ Depends on: `Readable` (`node:stream`) · `Writable` (`node:stream`)
 ## `@deepseek-ai/dsh-semantic-layer`
 
 ```ts config-catalog
-/** Configuration for the `ctx.schema` Cordis Service (semantic-layer root + default scope id). */
+/**
+ * Mount config for the `semantic-layer` row in a bundle's `cordis.patch.yml`.
+ *
+ * Declared here rather than re-exported from the substrate because a plugin's
+ * config type must live in its own package — `gen-config-catalog` enforces
+ * that, and it is the right boundary: this is the HOST-facing mount surface,
+ * so the adapter owns it and the substrate's internal config type stays free
+ * to move. Structurally assignable to the core's constructor parameter, which
+ * is what keeps `new SemanticGroundingCore(config)` honest.
+ *
+ * `corpusVariant`'s union is spelled out instead of importing the substrate's
+ * `CorpusVariant`, for the same locality reason; the schemastery `Config`
+ * below already pins the same two literals, and the two must track each other.
+ */
 export interface SemanticLayerConfig {
   /** Semantic-layer scope root (the dir with config.yaml/events/tables). */
   readonly semanticRoot?: string
   /** Default scope id for Tier-2 audit + schema discovery. */
   readonly scopeId?: string
-  /** D2h: enrichment variant — 'params+term' (default, D2e-shipped) or
-   * 'term-only' (D2g verdict (A) higher-recall). Mount-time config; switching
-   * it remounts the Service (new WeakMap key -> fresh enriched linker), so it
-   * is NOT part of the D2f corpusVersion cache key. */
-  readonly corpusVariant?: CorpusVariant
-  /** G3: auto-run DWS→DIM relation discovery after a Service write
-   * (syncWrite/updateTableMeta). Default true (G3: core capability, not an
-   * optional hook). Set false to suppress (e.g. during bulk sync). */
+  /** D2h enrichment variant — 'params+term' (default) or 'term-only'. */
+  readonly corpusVariant?: 'params+term' | 'term-only'
+  /** G3 auto-run DWS→DIM relation discovery after a Service write. */
   readonly autoEnrich?: boolean
 }
-
-/** D2h (2026-08-21): the enrichment variant — which slices of each event pack
- * into the indexed `description`. `params+term` (default, the D2e-shipped form)
- * packs the event description + params_fields (field name + desc) + terminology
- * slang; `term-only` packs the event description + terminology slang ONLY
- * (drops params_fields — the D2g verdict (A) higher-recall form on the shipped
- * Bm25Linker: 77.0% strict vs params+term 68.1% on 113 gold; best
- * term@topK=20 = 85.0%). `params-only` is NOT shipped (D2g measured it 63.7%
- * strict, strictly worse than params+term 68.1% + degenerate with
- * params+term-on-no-slang); a future ticket can add it as a non-breaking enum
- * extension. The variant is a mount-time SemanticLayerConfig choice (not
- * mid-session); switching it remounts the Service (new WeakMap key -> fresh
- * enriched linker), so it is NOT part of the D2f corpusVersion cache key. */
-export type CorpusVariant = 'params+term' | 'term-only'
 ```
 
 来源：[`packages/data/semantic-layer/src/index.ts:227`](../packages/data/semantic-layer/src/index.ts)

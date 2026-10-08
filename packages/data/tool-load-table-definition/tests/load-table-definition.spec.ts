@@ -10,8 +10,8 @@
  */
 import { test, expect } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import { TableDefinitionSchema, type TableDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import { TableDefinitionSchema, type TableDefinition } from '@semantic-grounding/substrate'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 import {
   apply,
   validateDefinitionName,

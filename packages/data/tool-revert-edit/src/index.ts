@@ -172,7 +172,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // for concepts — same as the prior behavior, which read loadEventDefinition=null).
       let fromVersion: number | undefined
       try {
-        const { dumpYaml } = await import('@deepseek-ai/dsh-semantic-layer')
+        const { dumpYaml } = await import('@semantic-grounding/substrate')
         let currentYaml: string | undefined
         let snapshotKind: 'table' | 'event' | undefined
         if (kind === 'table') {
@@ -194,12 +194,12 @@ export function apply(ctx: Context, _config: Config = {}): void {
       // concept branch mirrors edit-definition's raw writeFileAtomic to concepts/.
       try {
         if (kind === 'table') {
-          const { writeTable } = await import('@deepseek-ai/dsh-semantic-layer')
+          const { writeTable } = await import('@semantic-grounding/substrate')
           const { load: yamlLoad } = await import('js-yaml')
           const obj = yamlLoad(snapshot.content) as Record<string, unknown>
           await writeTable(schema.semanticRoot, validated, obj)
         } else if (kind === 'event') {
-          const { writeEventYaml } = await import('@deepseek-ai/dsh-semantic-layer')
+          const { writeEventYaml } = await import('@semantic-grounding/substrate')
           const res = await writeEventYaml(schema.semanticRoot, validated, snapshot.content)
           if (!res.ok) {
             return {

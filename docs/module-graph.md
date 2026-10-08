@@ -968,6 +968,14 @@ flowchart TD
   pkg_audit --> pkg_invariants
   pkg_audit --> pkg_session
   pkg_audit --> pkg_tools
+  pkg_phase_gate --> pkg_agent
+  pkg_phase_gate --> pkg_invariants
+  pkg_phase_gate --> pkg_llm
+  pkg_phase_gate --> pkg_nl2sql_engine
+  pkg_phase_gate --> pkg_scope_registry
+  pkg_phase_gate --> pkg_session
+  pkg_phase_gate --> pkg_system_prompt
+  pkg_phase_gate --> pkg_tools
   pkg_result_cache_memory --> pkg_invariants
   pkg_result_cache_memory --> pkg_result_cache
   pkg_result_cache_memory --> pkg_tools
@@ -978,9 +986,23 @@ flowchart TD
   pkg_tool_critique_sql --> pkg_invariants
   pkg_tool_critique_sql --> pkg_nl2sql_engine
   pkg_tool_critique_sql --> pkg_tools
+  pkg_tool_discover_alt_labels --> pkg_invariants
+  pkg_tool_discover_alt_labels --> pkg_tools
+  pkg_tool_discover_relations --> pkg_invariants
+  pkg_tool_discover_relations --> pkg_tools
   pkg_tool_evaluate_sql_quality --> pkg_invariants
   pkg_tool_evaluate_sql_quality --> pkg_nl2sql_engine
   pkg_tool_evaluate_sql_quality --> pkg_tools
+  pkg_tool_get_coverage --> pkg_invariants
+  pkg_tool_get_coverage --> pkg_tools
+  pkg_tool_get_definition --> pkg_invariants
+  pkg_tool_get_definition --> pkg_tools
+  pkg_tool_list_domains --> pkg_invariants
+  pkg_tool_list_domains --> pkg_tools
+  pkg_tool_load_event_definition --> pkg_invariants
+  pkg_tool_load_event_definition --> pkg_tools
+  pkg_tool_load_table_definition --> pkg_invariants
+  pkg_tool_load_table_definition --> pkg_tools
   pkg_tool_present_clarification --> pkg_invariants
   pkg_tool_present_clarification --> pkg_tools
   pkg_tool_present_decomposition --> pkg_invariants
@@ -999,6 +1021,9 @@ flowchart TD
   pkg_tool_search_data_sources --> pkg_nl2sql_engine
   pkg_tool_search_data_sources --> pkg_retrieval
   pkg_tool_search_data_sources --> pkg_tools
+  pkg_tool_search_schema --> pkg_invariants
+  pkg_tool_search_schema --> pkg_nl2sql_engine
+  pkg_tool_search_schema --> pkg_tools
   pkg_tool_suggest_followups --> pkg_invariants
   pkg_tool_suggest_followups --> pkg_tools
   pkg_tool_trigger_eval --> pkg_eval_runner
@@ -1176,10 +1201,12 @@ flowchart TD
   pkg_preset_autojoin --> pkg_agent
   pkg_preset_autojoin --> pkg_agent_presets
   pkg_preset_autojoin --> pkg_invariants
-  pkg_semantic_layer --> pkg_atomic_write
   pkg_semantic_layer --> pkg_audit
-  pkg_semantic_layer --> pkg_invariants
   pkg_semantic_layer --> pkg_llm
+  pkg_tool_update_table_config --> pkg_audit
+  pkg_tool_update_table_config --> pkg_identity
+  pkg_tool_update_table_config --> pkg_invariants
+  pkg_tool_update_table_config --> pkg_tools
   pkg_experimental_auto_review --> pkg_agent
   pkg_experimental_auto_review --> pkg_agent_instructions
   pkg_experimental_auto_review --> pkg_llm
@@ -1314,57 +1341,20 @@ flowchart TD
   pkg_evidence_query --> pkg_invariants
   pkg_evidence_query --> pkg_semantic_layer
   pkg_evidence_query --> pkg_typert_protocol
-  pkg_phase_gate --> pkg_agent
-  pkg_phase_gate --> pkg_invariants
-  pkg_phase_gate --> pkg_llm
-  pkg_phase_gate --> pkg_nl2sql_engine
-  pkg_phase_gate --> pkg_scope_registry
-  pkg_phase_gate --> pkg_semantic_layer
-  pkg_phase_gate --> pkg_session
-  pkg_phase_gate --> pkg_system_prompt
-  pkg_phase_gate --> pkg_tools
   pkg_schema_gateway --> pkg_invariants
   pkg_schema_gateway --> pkg_nl2sql_engine
   pkg_schema_gateway --> pkg_semantic_layer
   pkg_schema_gateway --> pkg_typert_protocol
-  pkg_tool_discover_alt_labels --> pkg_invariants
-  pkg_tool_discover_alt_labels --> pkg_semantic_layer
-  pkg_tool_discover_alt_labels --> pkg_tools
-  pkg_tool_discover_relations --> pkg_invariants
-  pkg_tool_discover_relations --> pkg_semantic_layer
-  pkg_tool_discover_relations --> pkg_tools
+  pkg_tool_edit_definition --> pkg_atomic_write
   pkg_tool_edit_definition --> pkg_audit
   pkg_tool_edit_definition --> pkg_invariants
   pkg_tool_edit_definition --> pkg_semantic_layer
   pkg_tool_edit_definition --> pkg_tools
-  pkg_tool_get_coverage --> pkg_invariants
-  pkg_tool_get_coverage --> pkg_semantic_layer
-  pkg_tool_get_coverage --> pkg_tools
-  pkg_tool_get_definition --> pkg_invariants
-  pkg_tool_get_definition --> pkg_semantic_layer
-  pkg_tool_get_definition --> pkg_tools
-  pkg_tool_list_domains --> pkg_invariants
-  pkg_tool_list_domains --> pkg_semantic_layer
-  pkg_tool_list_domains --> pkg_tools
-  pkg_tool_load_event_definition --> pkg_invariants
-  pkg_tool_load_event_definition --> pkg_semantic_layer
-  pkg_tool_load_event_definition --> pkg_tools
-  pkg_tool_load_table_definition --> pkg_invariants
-  pkg_tool_load_table_definition --> pkg_semantic_layer
-  pkg_tool_load_table_definition --> pkg_tools
+  pkg_tool_revert_edit --> pkg_atomic_write
   pkg_tool_revert_edit --> pkg_audit
   pkg_tool_revert_edit --> pkg_invariants
   pkg_tool_revert_edit --> pkg_semantic_layer
   pkg_tool_revert_edit --> pkg_tools
-  pkg_tool_search_schema --> pkg_invariants
-  pkg_tool_search_schema --> pkg_nl2sql_engine
-  pkg_tool_search_schema --> pkg_semantic_layer
-  pkg_tool_search_schema --> pkg_tools
-  pkg_tool_update_table_config --> pkg_audit
-  pkg_tool_update_table_config --> pkg_identity
-  pkg_tool_update_table_config --> pkg_invariants
-  pkg_tool_update_table_config --> pkg_semantic_layer
-  pkg_tool_update_table_config --> pkg_tools
   pkg_webhook_github --> pkg_credentials
   pkg_webhook_github --> pkg_host_webserver
   pkg_webhook_github --> pkg_session
@@ -1822,10 +1812,18 @@ flowchart TD
 | [`agent-instructions`](../packages/context/agent-instructions) | `context` | [`agent`](../packages/core/agent), [`fs`](../packages/fs/fs), [`home-paths`](../packages/util/home-paths), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`tools`](../packages/core/tools) |
 | [`file-reference-local`](../packages/context/file-reference-local) | `context` | [`agent`](../packages/core/agent), [`file-reference`](../packages/context/file-reference), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`audit`](../packages/data/audit) | `data` | [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session), [`tools`](../packages/core/tools) |
+| [`phase-gate`](../packages/data/phase-gate) | `data` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`scope-registry`](../packages/data/scope-registry), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`result-cache-memory`](../packages/data/result-cache-memory) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`result-cache`](../packages/data/result-cache), [`tools`](../packages/core/tools) |
 | [`tool-compute`](../packages/data/tool-compute) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`ptc-runtime`](../packages/ptc-runtime/ptc-runtime), [`result-cache`](../packages/data/result-cache), [`tools`](../packages/core/tools) |
 | [`tool-critique-sql`](../packages/data/tool-critique-sql) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`tools`](../packages/core/tools) |
+| [`tool-discover-alt-labels`](../packages/data/tool-discover-alt-labels) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-discover-relations`](../packages/data/tool-discover-relations) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-evaluate-sql-quality`](../packages/data/tool-evaluate-sql-quality) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`tools`](../packages/core/tools) |
+| [`tool-get-coverage`](../packages/data/tool-get-coverage) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-get-definition`](../packages/data/tool-get-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-list-domains`](../packages/data/tool-list-domains) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-load-event-definition`](../packages/data/tool-load-event-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
+| [`tool-load-table-definition`](../packages/data/tool-load-table-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-present-clarification`](../packages/data/tool-present-clarification) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-present-decomposition`](../packages/data/tool-present-decomposition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-present-table`](../packages/data/tool-present-table) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
@@ -1833,6 +1831,7 @@ flowchart TD
 | [`tool-retrieve`](../packages/data/tool-retrieve) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`retrieval`](../packages/retrieval/retrieval), [`tools`](../packages/core/tools) |
 | [`tool-scope-routing`](../packages/data/tool-scope-routing) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-search-data-sources`](../packages/data/tool-search-data-sources) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`retrieval`](../packages/retrieval/retrieval), [`tools`](../packages/core/tools) |
+| [`tool-search-schema`](../packages/data/tool-search-schema) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`tools`](../packages/core/tools) |
 | [`tool-suggest-followups`](../packages/data/tool-suggest-followups) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-trigger-eval`](../packages/data/tool-trigger-eval) | `data` | [`eval-runner`](../packages/eval/eval-runner), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`tool-present`](../packages/deliverables/tool-present) | `deliverables` | [`agent`](../packages/core/agent), [`fs`](../packages/fs/fs), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`tools`](../packages/core/tools) |
@@ -1870,7 +1869,8 @@ flowchart TD
 | [`web-app`](../packages/bundle/web-app) | `bundle` | [`invariants`](../packages/runtime-diagnostics/invariants), [`shell-env`](../packages/shell/shell-env), [`system-prompt`](../packages/core/system-prompt) |
 | [`management-session`](../packages/data/management-session) | `data` | [`agent-presets`](../packages/preset/agent-presets), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session) |
 | [`preset-autojoin`](../packages/data/preset-autojoin) | `data` | [`agent`](../packages/core/agent), [`agent-presets`](../packages/preset/agent-presets), [`invariants`](../packages/runtime-diagnostics/invariants) |
-| [`semantic-layer`](../packages/data/semantic-layer) | `data` | [`atomic-write`](../packages/util/atomic-write), [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm) |
+| [`semantic-layer`](../packages/data/semantic-layer) | `data` | [`audit`](../packages/data/audit), [`llm`](../packages/llm/llm) |
+| [`tool-update-table-config`](../packages/data/tool-update-table-config) | `data` | [`audit`](../packages/data/audit), [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`tools`](../packages/core/tools) |
 | [`experimental-auto-review`](../packages/experimental/auto-review) | `experimental` | [`agent`](../packages/core/agent), [`agent-instructions`](../packages/context/agent-instructions), [`llm`](../packages/llm/llm), [`permission-presets`](../packages/interaction/permission-presets), [`session`](../packages/core/session), [`tools`](../packages/core/tools) |
 | [`tool-cordis`](../packages/extensions/tool-cordis) | `extensions` | [`agent`](../packages/core/agent), [`cordis-host-runner`](../packages/extensions/cordis-host-runner), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`host-plugin-inventory`](../packages/host/plugin-inventory) | `host` | [`agent-presets`](../packages/preset/agent-presets), [`brand`](../packages/util/brand), [`typert-protocol`](../packages/typert/protocol) |
@@ -1891,19 +1891,9 @@ flowchart TD
 | [`headless`](../packages/bundle/headless) | `bundle` | [`agent`](../packages/core/agent), [`agent-default-model`](../packages/core/agent-default-model), [`fs`](../packages/fs/fs), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-query`](../packages/session-query/session-query) |
 | [`compaction-tool-result-pruner`](../packages/compaction/compaction-tool-result-pruner) | `compaction` | [`compaction`](../packages/compaction/compaction), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`token-meter`](../packages/llm/token-meter) |
 | [`evidence-query`](../packages/data/evidence-query) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`typert-protocol`](../packages/typert/protocol) |
-| [`phase-gate`](../packages/data/phase-gate) | `data` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`scope-registry`](../packages/data/scope-registry), [`semantic-layer`](../packages/data/semantic-layer), [`session`](../packages/core/session), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`schema-gateway`](../packages/data/schema-gateway) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`semantic-layer`](../packages/data/semantic-layer), [`typert-protocol`](../packages/typert/protocol) |
-| [`tool-discover-alt-labels`](../packages/data/tool-discover-alt-labels) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-discover-relations`](../packages/data/tool-discover-relations) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-edit-definition`](../packages/data/tool-edit-definition) | `data` | [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-get-coverage`](../packages/data/tool-get-coverage) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-get-definition`](../packages/data/tool-get-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-list-domains`](../packages/data/tool-list-domains) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-load-event-definition`](../packages/data/tool-load-event-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-load-table-definition`](../packages/data/tool-load-table-definition) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-revert-edit`](../packages/data/tool-revert-edit) | `data` | [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-search-schema`](../packages/data/tool-search-schema) | `data` | [`invariants`](../packages/runtime-diagnostics/invariants), [`nl2sql-engine`](../packages/data/nl2sql-engine), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
-| [`tool-update-table-config`](../packages/data/tool-update-table-config) | `data` | [`audit`](../packages/data/audit), [`identity`](../packages/identity/identity), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-edit-definition`](../packages/data/tool-edit-definition) | `data` | [`atomic-write`](../packages/util/atomic-write), [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
+| [`tool-revert-edit`](../packages/data/tool-revert-edit) | `data` | [`atomic-write`](../packages/util/atomic-write), [`audit`](../packages/data/audit), [`invariants`](../packages/runtime-diagnostics/invariants), [`semantic-layer`](../packages/data/semantic-layer), [`tools`](../packages/core/tools) |
 | [`webhook-github`](../packages/webhook/webhook-github) | `webhook` | [`credentials`](../packages/credentials/credentials), [`host-webserver`](../packages/host/webserver), [`session`](../packages/core/session), [`webhook`](../packages/webhook/webhook) |
 | [`goal-eval-context`](../packages/goal/goal-eval-context) | `goal` | [`evidence-query`](../packages/data/evidence-query), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants), [`system-prompt`](../packages/core/system-prompt) |
 | [`goal-eval-policy`](../packages/goal/goal-eval-policy) | `goal` | [`eval-runner`](../packages/eval/eval-runner), [`evidence-query`](../packages/data/evidence-query), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session) |

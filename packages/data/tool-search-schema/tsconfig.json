@@ -21,9 +21,6 @@
       "path": "../../core/tools"
     },
     {
-      "path": "../../data/semantic-layer"
-    },
-    {
       "path": "../../data/nl2sql-engine"
     }
   ]

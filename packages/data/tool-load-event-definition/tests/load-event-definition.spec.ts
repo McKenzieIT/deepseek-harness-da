@@ -14,8 +14,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
-import { EventDefinitionSchema, type EventDefinition } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import { EventDefinitionSchema, type EventDefinition } from '@semantic-grounding/substrate'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 import {
   apply,
   validateDefinitionName,

@@ -21,7 +21,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { computeEdit } from '../src/index.ts'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

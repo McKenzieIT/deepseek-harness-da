@@ -490,15 +490,6 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Builds the NL→SQL prompt, calls the LLM, and runs the critic gate; the search tool consumes the engine conventions.',
   },
   {
-    key: 'schema',
-    pkg: 'semantic-layer',
-    title: 'Semantic layer: discover/describe/sample',
-    mode: 'seam',
-    implementations: ['semantic-layer'],
-    consumers: ['nl2sql-engine', 'tool-search-data-sources'],
-    note: 'The data-source/table substrate that feeds the NL→SQL prompt as context; discover/describe/sample over the semantic layer.',
-  },
-  {
     key: 'userQuestions',
     pkg: 'user-questions',
     title: 'Human question/answer seam',

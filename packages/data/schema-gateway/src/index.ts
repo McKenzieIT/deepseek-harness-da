@@ -18,7 +18,7 @@ import {
   loadMetricDefinitions,
   TableDefinitionSchema,
   EventDefinitionSchema,
-} from '@deepseek-ai/dsh-semantic-layer'
+} from '@semantic-grounding/substrate'
 import { Bm25Linker, type DataSourceDoc } from '@deepseek-ai/dsh-nl2sql-engine'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type {

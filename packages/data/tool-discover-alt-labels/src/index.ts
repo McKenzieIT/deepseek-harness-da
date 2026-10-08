@@ -16,7 +16,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 
 export const name = 'tool-discover-alt-labels'
 export const inject = ['tools']
@@ -171,7 +171,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       if (exec.signal.aborted) {
         throw new Error('discover_alt_labels aborted before enriching')
       }
-      const schema = ctx.get('schema')
+      const schema = ctx.get('schema') as SemanticLayerService | undefined
       return discoverAltLabelsResult(schema, args.tables, args.events)
     },
     presentCall(args): GenericCallView {

@@ -11,8 +11,8 @@ import {
   type EditDefinitionResult,
 } from '../src/index.ts'
 import type { Context } from '@deepseek-ai/cordis'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer/src/index.ts'
-import { dumpYaml, getCorpusVersion } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
+import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+import { dumpYaml, SemanticGroundingCore } from '@semantic-grounding/substrate'
 
 // ── Mock SemanticLayerService ───────────────────────────────────────────────
 
@@ -744,11 +744,17 @@ describe('edit_definition tool contract', () => {
 
     it('writes a concept edit into <semanticRoot>/concepts and bumps the corpus version', async () => {
       const root = mkdtempSync(join(tmpdir(), 'edit-definition-concept-'))
+      // The corpus-version signal is a METHOD on the core (the substrate barrel
+      // exposes no free `getCorpusVersion`), so a host-neutral core over `root`
+      // stands in as the version probe. With no scope registry injected its
+      // no-arg `corpusVersion()` is exactly the substrate's per-path counter for
+      // `root` — the same counter the tool bumps via `invalidateCaches`.
+      const versionProbe = new SemanticGroundingCore({ semanticRoot: root })
       try {
         const before = { name: 'dau', pref_label: 'DAU', description: 'old', alt_labels: ['dau'] }
         const schema = { ...createMockSchema({ concepts: { dau: before } }), semanticRoot: root }
         const { def, audit } = registerTool(schema)
-        expect(getCorpusVersion(root)).toBe(0)
+        expect(versionProbe.corpusVersion()).toBe(0)
 
         const out = await def.execute(
           { asset_name: 'dau', patch: { description: 'Daily Active Users', alt_labels: ['DAU', '日活'] } },
@@ -771,7 +777,7 @@ describe('edit_definition tool contract', () => {
         }))
         // data-tools-discovery-3: the corpus-version signal advances so the
         // BM25 caches and alias graph rebuild.
-        expect(getCorpusVersion(root)).toBe(1)
+        expect(versionProbe.corpusVersion()).toBe(1)
         expect(audit.store.recordSnapshot).toHaveBeenCalledWith('dau', 'concept', dumpYaml(before))
         expect(audit.recordTier2Write).toHaveBeenCalledWith(
           'edit_definition',
@@ -787,6 +793,10 @@ describe('edit_definition tool contract', () => {
           },
         )
       } finally {
+        // Releases the probe's data-source-kind registrations and the graph
+        // cache-invalidation listeners the core owns (module-level in the
+        // substrate, so leaking them would bleed into later tests).
+        versionProbe.dispose()
         rmSync(root, { recursive: true, force: true })
       }
     })

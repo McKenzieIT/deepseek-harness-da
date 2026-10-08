@@ -2,7 +2,7 @@
  * D2f live-activation probe (2026-08-21). Confirms the D2e shipped enriched
  * corpus is active over REAL RBI scope 10000147 via the SHIPPED tool-search
  * execute path (getEnrichedLinker + D2f corpusVersion version-check) + shipped
- * semantic-layer io (loadRetrievalCorpus / getCorpusVersion / loadEvents) +
+ * substrate io (loadRetrievalCorpus / core.corpusVersion / loadEvents) +
  * shipped Bm25Linker.
  *
  * Smoke (not a 31-case re-measure). Activation is CONFIRMED by: (1) enriched
@@ -19,7 +19,7 @@
  * Run: cd /Users/mckenzie/workspace/deepseek-harness-da && \
  *        pnpm exec tsx prototypes/d2c-retrieve-baseline/d2f_live_activation_probe.ts
  */
-import { loadRetrievalCorpus, getCorpusVersion, loadEvents } from '../../packages/data/semantic-layer/src/io.ts'
+import { loadRetrievalCorpus, loadEvents, SemanticGroundingCore } from '@semantic-grounding/substrate'
 import { Bm25Linker } from '../../packages/data/nl2sql-engine/src/bm25-linking.ts'
 import { apply, type SearchHit } from '../../packages/data/tool-search-data-sources/src/index.ts'
 import type { Context } from '../../vendor/cordis/src/index.ts'
@@ -28,9 +28,15 @@ const RBI = '/Users/mckenzie/workspace/reverse-bi/resources/semantic-layer/10000
 
 // SHIPPED activation wiring: ctx.schema delegates to real io over RBI. apply()
 // + execute exercise getEnrichedLinker (lazy build + D2f version-check).
+//
+// The corpus-version signal is a METHOD on the core now — the substrate barrel
+// exposes no free `getCorpusVersion` — so a host-neutral core over RBI stands in
+// purely as the version probe. `tool-search-data-sources` reads `corpusVersion`
+// structurally, so the stub shape below is unchanged.
+const core = new SemanticGroundingCore({ semanticRoot: RBI })
 const schema = {
   loadRetrievalCorpus: () => loadRetrievalCorpus(RBI),
-  corpusVersion: () => getCorpusVersion(RBI),
+  corpusVersion: () => core.corpusVersion(),
 }
 interface ToolDef {
   name: string

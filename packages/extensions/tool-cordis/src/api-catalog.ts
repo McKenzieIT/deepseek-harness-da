@@ -2001,161 +2001,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
-    key: 'schema',
-    summary: 'The semantic-layer Cordis `Service`.',
-    description: 'The semantic-layer Cordis `Service`. Owns the `ctx.schema` seam: substrate definitions (load_*, sync-read) + live-engine schema (discover/describe/sample, delegated to an injectable `SchemaProvider` — P6b Q3 deferred). Tier-2 writes (syncWrite/updateTableMeta) route through `ctx.audit.recordTier2Write`.',
-    methods: [
-      {
-        signature: 'resolveScopeRoot(scopeId?: string): string',
-        description: 'GA-GT1 Phase 5a: PUBLIC per-scope root-resolution seam. Delegates to the private `resolveRoot` (4-branch semantics unchanged) so consumer packages (tool-retrieve/tool-search-data-sources/tool-search-schema enrichedLinkers + retrieval-inproc scopedRetrievers) can resolve a scope\'s root for the #19/#22 root-check fix (5b adds `root` to the per-scope cache entry + checks `entry.root === root` — parity with the Phase 2 I-1 `graphCacheByScope` root guard). Dormant in 5a: no consumer calls it yet; the method is exposed now so 5b can wire it through `SchemaCorpusSource`.\n\n4 branches (same as `resolveRoot`): - scopeId undefined → active scope\'s root (backward-compatible). - scopeId provided + registry mounted + scope found → that scope\'s root. - scopeId provided + registry mounted + scope NOT found → throw (intranet-security: refuse silent fallback to active scope to prevent cross-tenant corpus leak). - scopeId provided + registry unmounted → active/cfg root (test stand-in).',
-        parameters: [{ name: 'scopeId', description: 'optional scope id; omit for the active scope.' }],
-        returns: 'the resolved semantic-layer root path.',
-      },
-      {
-        signature: 'getRegistry(): DataSourceRegistry',
-        description: 'The live data-source-kind registry (events/tables/metrics plugins registered at construction).',
-        parameters: [],
-        returns: 'the live data-source-kind registry.',
-      },
-      {
-        signature: 'getRelationGraph(scopeId?: string): RelationGraph',
-        description: 'The live relation graph: bidirectional adjacency over every table\'s `dimension_refs` (joins), every event\'s `external_refs` (joins), and every metric\'s `relations` (derived_from). Cached; rebuilt when the layer\'s corpus-version counter advances (a write bumps it via `invalidateCaches`). Events only enter the graph once `enrichAllEvents` has written their `external_refs` (Part B).\n\nGA-GT1 Phase 2 (D4 β): an optional `scopeId` resolves a per-request scope\'s root (via `resolveRoot`); the no-arg path is unchanged (active scope, single instance cache — backward-compatible). The scopeId path uses a separate per-scope cache (`graphCacheByScope` — plain Map, LRU eviction deferred to Phase 3/4) keyed by scopeId + root + `corpusVersionForRoot(root)`. The root is part of the cache key so re-registering the scope with a different `semanticRoot` invalidates the entry even when the new root\'s content counter is still 0 (I-1: cross-tenant corpus leak guard). It is acceptable that `getRelationGraph()` and `getRelationGraph(activeId)` produce separate cache entries for the same active scope (data is identical; duplicate entry is harmless — Phase 3/4 cleanup unifies the two paths).',
-        parameters: [{ name: 'scopeId', description: 'optional scope id; omit to use the active scope (backward-compatible).' }],
-        returns: 'the cached `RelationGraph`, rebuilt when stale.',
-      },
-      {
-        signature: 'getDanglingDomainRefs(): string[]',
-        description: 'CL-2 D2: dangling domain→concept references collected during the last `getRelationGraph()` build — assets whose `domains` reference a concept name with no matching definition in concepts/. Such refs are skipped (warned) rather than aborting the graph build, so valid assets still get their edges. Empty when all domain refs resolve or no concepts are loaded.\n\nM-1: `danglingDomainRefs` is shared INSTANCE state — `buildGraph` is now called by BOTH the no-arg + scopeId paths of `getRelationGraph`, so this reflects the last build ACROSS ALL SCOPES (whichever `getRelationGraph` call ran last), NOT a per-scope view. Per-scope keying of this health surface is deferred to Phase 3/4 (scope count is small; the leak guard is on the graph cache, not this health-check surface).',
-        parameters: [],
-        returns: 'a snapshot of the dangling refs (`asset="..." domain="..."`) from the last build (across all scopes).',
-      },
-      {
-        signature: 'loadRetrievalCorpusAll(): CorpusItem[]',
-        description: 'Registry-driven full retrieval corpus: every registered kind\'s definitions projected via its `toCorpusItem` (events + tables + metrics). Supersedes the events-only `loadRetrievalCorpus()` for P3/P4 — tables + metrics MUST be indexable so BM25 can hit a DIM table (join recall) or a metric (Level 2 context injection). `loadRetrievalCorpus()` is unchanged (preserves the D2e events-only measured behavior + its 445-item K11 test).',
-        parameters: [],
-        returns: 'the full corpus (events + tables + metrics) ready for Bm25Linker.',
-      },
-      {
-        signature: 'projectGraphNodes(opts: { readonly includeDerived?: boolean } = {}): GraphNodeProjection[]',
-        description: 'Registry-driven semantic-graph node projection (W27): every registered kind\'s `toGraphNode` applied to each of its loaded definitions, followed by the nodes those kinds derive through their declared `derivedNodes` contributor (`metric` for `table` and `event`). Each kind contributes a node or explicitly declines (`null`). Iterating the registry, rather than hand-written per-kind loops, is what lets a kind registered later reach the graph — with derived nodes included — without editing the projection.\n\nUncached: it re-reads every registered kind\'s definitions from the ACTIVE scope root on each call. The Schema Gateway threads a per-request `scopeId` only to the relation-graph edge source, matching pre-W27 node-load behavior.',
-        parameters: [{ name: 'opts', description: '`includeDerived` (default `true`) projects each kind\'s derived nodes; pass `false` to skip deriving nodes the caller discards.' }],
-        returns: 'one projection per graph node: every registered kind\'s own nodes, then their derived nodes.',
-      },
-      {
-        signature: 'setSchemaProvider(provider: SchemaProvider | undefined): void',
-        description: 'Mount a live-engine schema provider (P6b Q3 deferred; follow-up mounts the real one).',
-        parameters: [{ name: 'provider', description: 'the provider to delegate discover/describe/sample to, or undefined to clear.' }],
-      },
-      {
-        signature: 'setLlmCall(fn?: LlmCall): void',
-        description: 'G3: inject (or clear) the one-shot LLM call used by the semantic relation round. When undefined, `discoverRelations` + the on-write hook run the deterministic PK-name round only. Production wires this to `ctx.llm` (BlockAssembler-assembled text); the substrate itself stays free of the LLM dependency.',
-        parameters: [{ name: 'fn', description: 'the llmCall to use, or undefined to run deterministic-only.' }],
-      },
-      {
-        signature: 'async discoverRelations( opts: { readonly tables?: readonly string[]; readonly preserveCurated?: boolean } = {}, ): Promise<{ enriched: number; written: number; errors: string[]; note?: string }>',
-        description: 'G3: discover DWS→DIM dimension relations for the layer (or a subset when `tables` is given) and write them back into each DWS table\'s `dimension_refs`. Delegates to the substrate `enrichAllDwsTables` (two-round strategy; deterministic round always runs, LLM round runs only when a `llmCall` is injected via `setLlmCall`). No Tier-2 audit — this is the explicit enrichment entry (used by the `discover_relations` agent tool + batch seeding); the on-write hook is the auto path.\n\nGA-GT3-5b: `preserveCurated` (default `true`) toggles the replace strategy when `mergeExisting=false` (the default): `true` = origin-aware replace (curated manual/undefined preserved, machine dropped — PR #43); `false` = raw full-replace escape-hatch (ALL existing refs dropped, only discovered remain — for the rare blow-away-rebuild case). Additive: default behavior unchanged.',
-        parameters: [{ name: 'opts', description: 'optional `tables` filter + `preserveCurated` toggle (default true).' }],
-        returns: '`enriched` (DWS gaining >=1 ref) + `written` (DWS updated) + per-table `errors`.',
-      },
-      {
-        signature: 'async discoverEventRelations( opts: { readonly events?: readonly string[]; readonly preserveCurated?: boolean } = {}, ): Promise<{ enriched: number; written: number; errors: string[]; note?: string }>',
-        description: 'Discover event→DIM relations (parallel to `discoverRelations` for DWS tables) and write them into each event\'s `external_refs`. Delegates to the substrate `enrichAllEvents` (two-round; deterministic always runs, LLM round runs only when a `llmCall` is injected via `setLlmCall`). No Tier-2 audit — explicit enrichment entry.\n\nNOTE: an on-write hook for events (parallel to `enrichOnWrite` for tables) is deferred: there is no Service-level event-write path today (events are written via the substrate `writeEventYaml` raw-edit surface, not a Service method). The hook lands with a future `syncWriteEvents`/`updateEventMeta` Service method.\n\nGA-GT3-5b: `preserveCurated` (default `true`) toggles the replace strategy (parallel to `discoverRelations`): `true` = origin-aware replace (curated manual/undefined preserved, machine dropped — PR #43); `false` = raw full-replace escape-hatch (ALL existing refs dropped, only discovered remain). Additive: default behavior unchanged.',
-        parameters: [{ name: 'opts', description: 'optional `events` filter + `preserveCurated` toggle (default true).' }],
-        returns: '`enriched` (events gaining >=1 ref) + `written` (events updated) + per-event `errors`.',
-      },
-      {
-        signature: 'async discoverAltLabels( opts: { readonly tables?: readonly string[]; readonly events?: readonly string[] } = {}, ): Promise<{ enriched: number; written: number; errors: string[] }>',
-        description: 'CL-1 Phase 3: discover alt_labels (SKOS aliases) for definitions in the layer. Two-round strategy: deterministic extraction from description/columns/ domains + optional LLM semantic suggestions. Merges with existing labels (never removes curated aliases).',
-        parameters: [{ name: 'opts', description: 'optional filters: `tables` (table_names) and/or `events` (event names).' }],
-        returns: 'combined `enriched` + `written` + `errors` across tables and events.',
-      },
-      {
-        signature: 'loadEventDefinition(name: string): EventDefinition | null',
-        description: 'Load a validated event definition by name from the substrate.',
-        parameters: [{ name: 'name', description: 'the event `name` key to match.' }],
-        returns: 'the parsed `EventDefinition`, or null when no event matches.',
-      },
-      {
-        signature: 'loadTableDefinition(name: string, scopeId?: string): TableDefinition | null',
-        description: 'Load a validated table definition by name from the substrate.',
-        parameters: [{ name: 'name', description: 'the table `table_name` key to match.' }, { name: 'scopeId', description: 'GA-GT1 Phase 2: optional scope id; omit to use the active scope (backward-compatible).' }],
-        returns: 'the parsed `TableDefinition`, or null when no table matches.',
-      },
-      {
-        signature: 'loadMetricDefinition(name: string): MetricDefinition | null',
-        description: 'Load a validated metric definition by name from the substrate.',
-        parameters: [{ name: 'name', description: 'the metric `name` key to match (`<host>__<key>`).' }],
-        returns: 'the parsed `MetricDefinition`, or null when no host table/event defines a metric with this name.',
-      },
-      {
-        signature: 'loadConceptDefinition(name: string): import(\'./types.ts\').ConceptDefinition | null',
-        description: 'Load a validated concept definition by name from the substrate.',
-        parameters: [{ name: 'name', description: 'the concept `name` key to match.' }],
-        returns: 'the parsed `ConceptDefinition`, or null when no concept matches.',
-      },
-      {
-        signature: 'loadRetrievalCorpus(scopeId?: string): readonly EventCorpusItem[]',
-        description: 'Build an enriched retrieval corpus from the substrate — each event\'s `alt_labels` (SKOS aliases) + `params_fields` packed into the indexed `description`. The `corpusVariant` config selects slices: \'params+term\' (default) packs both; \'term-only\' packs aliases only.',
-        parameters: [{ name: 'scopeId', description: 'GA-GT1 Phase 2: optional scope id; omit to use the active scope (backward-compatible).' }],
-        returns: 'enriched corpus items ready for `Bm25Linker` / `HybridRetriever` indexing.',
-      },
-      {
-        signature: 'acquireSnapshot(scopeId?: string): DefinitionSnapshot',
-        description: 'W11 C1: Capture a point-in-time snapshot of the semantic layer definitions. The returned `DefinitionSnapshot` provides the same read API (`loadTableDefinition`, `loadEventDefinition`, `loadMetricDefinition`, `loadRetrievalCorpus`) but the data is pinned at the version when captured. Subsequent `invalidateCaches()` calls (from management-session writes) do NOT affect the returned snapshot. The next call to `acquireSnapshot` after a write sees the new data.\n\nCheap: if the corpus version has not changed since the last call, the cached data arrays are reused (no disk re-scan).\n\nGA-GT1 Phase 2: an optional `scopeId` resolves a per-request scope\'s root + corpus version (via `resolveRoot`/`corpusVersion(scopeId)`); the no-arg path is unchanged (active scope — backward-compatible).',
-        parameters: [{ name: 'scopeId', description: 'optional scope id; omit to use the active scope (backward-compatible).' }],
-        returns: 'a frozen `DefinitionSnapshot` pinned at the current corpus version.',
-      },
-      {
-        signature: 'async withSnapshot<T>(fn: (snap: DefinitionSnapshot) => Promise<T>): Promise<T>',
-        description: 'W11 C1: Execute `fn` with a consistent snapshot — definitions do not reload mid-execution even if `invalidateCaches` fires concurrently (e.g. from a management-session write). The snapshot is acquired before `fn` and released after (release is a no-op in v1; reserved for future GC).\n\nUsage (in the NL2SQL query engine): ```ts const sql = await ctx.schema.withSnapshot(async (snap) => { const table = snap.loadTableDefinition(\'dws_pay_order_di\') const event = snap.loadEventDefinition(\'game.pay.order\') // ... generate SQL using pinned definitions ... return generatedSql }) ```',
-        parameters: [{ name: 'fn', description: 'the async function to execute with a pinned snapshot.' }],
-        returns: 'the value returned by `fn`.',
-      },
-      {
-        signature: 'corpusVersion(scopeId?: string): number',
-        description: 'D2f (2026-08-21): the corpus-version counter for this layer - a monotonic signal bumped by every writer via `invalidateCaches` (writeEventYaml / writeTable / updateTableMeta / syncWriteDefinitions). Probed structurally by `tool-search-data-sources` (no static dep) so its cached enriched Bm25Linker rebuilds after a mid-session event edit instead of staying stale until reboot (D2e-deferred cache-invalidation). Reads the per-path counter for `this.semanticRoot` (0 until the first write).',
-        parameters: [{ name: 'scopeId', description: 'optional per-request scope; when omitted, the undefined (root) path\'s counter is read.' }],
-        returns: 'the current corpus-version counter.',
-      },
-      {
-        signature: 'async discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]>',
-        description: 'List tables in a scope (optionally filtered by kind) via the mounted provider.',
-        parameters: [{ name: 'scopeId', description: 'the scope to discover tables in.' }, { name: 'kind', description: 'optional kind filter forwarded to the provider.' }],
-        returns: 'a readonly array of table metas, or throws when no provider is mounted.',
-      },
-      {
-        signature: 'async describe(tableName: string): Promise<TableMeta | null>',
-        description: 'Describe one table\'s columns/partitions/comment via the mounted provider.',
-        parameters: [{ name: 'tableName', description: 'the table name to describe.' }],
-        returns: 'the table\'s meta, or null when the table is unknown / no provider is mounted.',
-      },
-      {
-        signature: 'async sample(tableName: string, n?: number): Promise<string>',
-        description: 'Sample N rows of a table as formatted text via the mounted provider.',
-        parameters: [{ name: 'tableName', description: 'the table name to sample.' }, { name: 'n', description: 'optional row count to sample (provider default applies when omitted).' }],
-        returns: 'the formatted sample text, or throws when no provider is mounted.',
-      },
-      {
-        signature: 'async syncWrite( tableMetas: readonly TableMeta[], opts: { readonly dimTableNames?: Set<string> readonly existingTables?: Map<string, Record<string, unknown>> readonly scopeId?: string } = {}, ): Promise<{ written: number; skipped: number; errors: string[] }>',
-        description: 'Tier-2 persistent write: batch-generate/merge table YAML from pre-fetched schema metas and write them to the substrate, recording each write via `ctx.audit` (D5 non-disableable). Routes to `syncWriteDefinitions`. G3: after the batch, the on-write hook re-runs DWS→DIM discovery for the written tables (gated by `autoEnrich`).',
-        parameters: [{ name: 'tableMetas', description: 'the table metas to write (from discover/describe).' }, { name: 'opts', description: 'optional dim-table-name set, existing-table map for merge, and scope id override.' }],
-        returns: 'counts of written/skipped tables plus per-table error messages.',
-      },
-      {
-        signature: 'async updateTableMeta( name: string, updates: Record<string, unknown>, opts: { readonly scopeId?: string } = {}, ): Promise<{ ok: true; table_name: string } | { ok: false; error: string }>',
-        description: 'Tier-2 per-scope write: read-merge-validate-write a single table\'s meta updates, recording the write via `ctx.audit` (D5 non-disableable). G3: after the write, the on-write hook re-runs DWS→DIM discovery for the table (gated by `autoEnrich`).',
-        parameters: [{ name: 'name', description: 'the table `table_name` to update.' }, { name: 'updates', description: 'the field overrides merged over the existing table YAML.' }, { name: 'opts', description: 'optional scope id override (default scope id is used when omitted).' }],
-        returns: '`{ ok: true, table_name }` on success, or `{ ok: false, error }` when the table is missing/malformed or validation fails.',
-      },
-      {
-        signature: 'async updateEventMeta( name: string, updates: Record<string, unknown>, opts: { readonly scopeId?: string } = {}, ): Promise<{ ok: true; event_name: string } | { ok: false; error: string }>',
-        description: 'Tier-2 per-scope write: read-merge-validate-write a single event\'s meta updates, recording the write via `ctx.audit` (D5 non-disableable). Parallel to `updateTableMeta` for the event substrate (A13 TOCTOU lost-update fix): the substrate re-reads the latest on-disk event YAML at write time and shallow-merges `updates` on top, so a concurrent edit between load+write is no longer silently overwritten.\n\nThe on-write event enrichment hook (parallel to `enrichOnWrite` for tables) remains deferred — see the note on `discoverEventRelations`. This method closes the "no Service-level event-write path" gap by routing through the substrate `updateEventMeta` (Tier-2 audited) instead of the raw-edit `writeEventYaml` surface.',
-        parameters: [{ name: 'name', description: 'the event `name` to update (must already exist on disk).' }, { name: 'updates', description: 'the field overrides merged over the existing event YAML.' }, { name: 'opts', description: 'optional scope id override (default scope id is used when omitted).' }],
-        returns: '`{ ok: true, event_name }` on success, or `{ ok: false, error }` when the event is missing/malformed or validation fails.',
-      },
-    ],
-  },
-  {
     key: 'scopes',
     summary: 'Scope registry Cordis service.',
     description: 'Scope registry Cordis service. Reads and writes a YAML file at `registryPath` containing scope definitions and the active scope id. All mutations are atomic (cross-process safe via file lock + atomic write).',
@@ -4996,10 +4841,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ComputerUseProviderName = Branded<\'ComputerUseProviderName\'>;',
   },
   {
-    name: 'ConceptDefinition',
-    declaration: 'export type ConceptDefinition = z.infer<typeof ConceptDefinitionSchema>;',
-  },
-  {
     name: 'ConfinedArgv',
     declaration: 'export interface ConfinedArgv {\n    argv: string[];\n    enforcement: SandboxEnforcement;\n    denialSignatures: readonly string[];\n    runnerFailureRules: readonly RunnerFailureRule[];\n}',
   },
@@ -5172,10 +5013,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CordisRuntimeTreeReader {\n    getTree(): Promise<CordisRuntimeTree>;\n}',
   },
   {
-    name: 'CorpusItem',
-    declaration: 'export interface CorpusItem {\n    readonly id: string;\n    readonly description?: string;\n    readonly metrics?: Readonly<Record<string, unknown>>;\n    readonly payload?: unknown;\n}',
-  },
-  {
     name: 'CreateAgentOptions',
     declaration: 'export interface CreateAgentOptions {\n    readonly sessionId: SessionId;\n    readonly parentAgent?: Agent;\n    readonly meta?: {\n        readonly cwd?: string;\n        readonly parentSession?: SessionId;\n        readonly isSeeded?: boolean;\n        readonly origin?: \'subagent\';\n        readonly delegationDepth?: number;\n        readonly agentPreset?: string;\n    };\n    readonly inheritedEventCount?: SessionLogOffset;\n    readonly seed?: readonly SessionEvent[];\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
   },
@@ -5232,20 +5069,8 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CriticCtx {\n    readonly candidateTables: Set<string>;\n    readonly eventParams: Set<string>;\n    readonly partitionCols: Set<string>;\n    readonly declaredJoinPairs?: Set<string>;\n}',
   },
   {
-    name: 'CriticFields',
-    declaration: 'export interface CriticFields {\n    readonly eventParams?: Readonly<Record<string, unknown>>;\n    readonly partitionCols?: readonly string[];\n}',
-  },
-  {
     name: 'DataScopeId',
     declaration: 'export type DataScopeId = Branded<\'DataScopeId\'>;',
-  },
-  {
-    name: 'DataSourceKindPlugin',
-    declaration: 'export interface DataSourceKindPlugin<T = unknown> {\n    readonly kind: string;\n    readonly schema: SchemaLike<T>;\n    readonly storageDir: string;\n    getId(raw: Record<string, unknown>): string | undefined;\n    toCorpusItem(def: T): CorpusItem | null;\n    toPromptContext(def: T): string;\n    toCriticContext?(def: T): CriticFields;\n    relations(def: T): RelationDef[];\n    toGraphNode(def: T): GraphNodeProjection | null;\n    readonly derivedNodes?: DerivedNodeContributor<T>;\n    readonly grouping?: KindGrouping;\n    toExecutableRule?(def: T): string | null;\n}',
-  },
-  {
-    name: 'DataSourceRegistry',
-    declaration: 'export class DataSourceRegistry {\n    onChange(listener: () => void): () => void;\n    register(plugin: DataSourceKindPlugin): () => void;\n    getKind(kind: string): DataSourceKindPlugin | undefined;\n    allKinds(): string[];\n    allPlugins(): DataSourceKindPlugin[];\n}',
   },
   {
     name: 'DeepSeekLlmApiExtensionMap',
@@ -5262,14 +5087,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DeepSeekLlmApiJson',
     declaration: 'export type DeepSeekLlmApiJson = null | boolean | number | string | DeepSeekLlmApiJson[] | {\n    [key: string]: DeepSeekLlmApiJson;\n};',
-  },
-  {
-    name: 'DefinitionSnapshot',
-    declaration: 'export class DefinitionSnapshot {\n    readonly version: number;\n    constructor(version: number, tables: readonly RawTable[], events: readonly RawEvent[], corpus: readonly EventCorpusItem[]);\n    loadTableDefinition(name: string): TableDefinition | null;\n    loadEventDefinition(name: string): EventDefinition | null;\n    loadMetricDefinition(name: string): MetricDefinition | null;\n    loadRetrievalCorpus(): readonly EventCorpusItem[];\n    get tables(): readonly RawTable[];\n    get events(): readonly RawEvent[];\n}',
-  },
-  {
-    name: 'DerivedNodeContributor',
-    declaration: 'export interface DerivedNodeContributor<T = unknown, D = unknown> {\n    derive(def: T): readonly D[];\n    toGraphNode(derived: D): GraphNodeProjection | null;\n    relations(derived: D): RelationDef[];\n    toCorpusItem(derived: D): CorpusItem | null;\n}',
   },
   {
     name: 'DiffCallView',
@@ -5410,14 +5227,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'EvalResultStore',
     declaration: 'export class EvalResultStore {\n    add(record: EvalResultRecord): void;\n    query(filters: EvalResultFilters): EvalResultQueryResult;\n    runHistory(filters: EvalRunHistoryFilters): EvalRunHistoryResult;\n    hasResultsFor(assetId: string, scopeId?: string): boolean;\n    getByRunId(runId: string): EvalResultRecord[];\n    getRunIds(): string[];\n    loadFromDirectory(dir: string, caseAssetResolver?: (caseId: string) => string): void;\n    clear(): void;\n}',
-  },
-  {
-    name: 'EventCorpusItem',
-    declaration: 'export interface EventCorpusItem {\n    readonly id: string;\n    readonly description?: string;\n    readonly metrics?: Readonly<Record<string, unknown>>;\n    readonly payload?: unknown;\n}',
-  },
-  {
-    name: 'EventDefinition',
-    declaration: 'export type EventDefinition = z.infer<typeof EventDefinitionSchema>;',
   },
   {
     name: 'FeedbackCategory',
@@ -5562,10 +5371,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'GrantRecord',
     declaration: 'export interface GrantRecord {\n    readonly kind: \'grant\';\n    readonly payload: unknown;\n}',
-  },
-  {
-    name: 'GraphNodeProjection',
-    declaration: 'export interface GraphNodeProjection {\n    readonly id: string;\n    readonly kind: string;\n    readonly label: string;\n    readonly domains: readonly string[];\n}',
   },
   {
     name: 'HostConnectionFetch',
@@ -5720,10 +5525,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type JsonValue = null | boolean | number | string | JsonValue[] | {\n    [key: string]: JsonValue;\n};',
   },
   {
-    name: 'KindGrouping',
-    declaration: 'export interface KindGrouping {\n    groupName(node: GraphNodeProjection): string;\n    readonly memberRelationType: string;\n}',
-  },
-  {
     name: 'KvFacet',
     declaration: 'export interface KvFacet {\n    open(descriptor: KvUnitDescriptor): Promise<KvUnit>;\n}',
   },
@@ -5746,10 +5547,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'LlmAttemptId',
     declaration: 'export type LlmAttemptId = Branded<\'LlmAttemptId\'>;',
-  },
-  {
-    name: 'LlmCall',
-    declaration: 'export type LlmCall = (prompt: string) => Promise<string>;',
   },
   {
     name: 'LlmCallConfig',
@@ -5972,10 +5769,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface MessageSourceMap {\n    user: {\n        kind: \'user\';\n    };\n    plugin: {\n        kind: \'plugin\';\n        plugin: string;\n    } & ContextFormed;\n    model: ModelMessageSource;\n    tool: ToolMessageSource;\n}',
   },
   {
-    name: 'MetricDefinition',
-    declaration: 'export type MetricDefinition = z.infer<typeof MetricDefinitionSchema>;',
-  },
-  {
     name: 'ModelCatalog',
     declaration: 'export interface ModelCatalog {\n    readonly default: ModelSelection;\n    readonly routableProviders: readonly string[];\n    readonly groups: readonly ModelProviderGroup[];\n    readonly failures: readonly ModelCatalogFailure[];\n}',
   },
@@ -6010,10 +5803,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ModelReasoningEffort',
     declaration: 'export interface ModelReasoningEffort {\n    readonly id: string;\n    readonly name: string;\n    readonly description?: string;\n}',
-  },
-  {
-    name: 'NodeAliasData',
-    declaration: 'export interface NodeAliasData {\n    readonly nodeId: string;\n    readonly prefLabel?: string | undefined;\n    readonly altLabels?: readonly string[] | undefined;\n}',
   },
   {
     name: 'ObjectJsonSchema',
@@ -6284,14 +6073,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type QueueAction = {\n    readonly kind: \'edit\';\n    readonly content: readonly ContentBlock[];\n} | {\n    readonly kind: \'remove\';\n} | {\n    readonly kind: \'steer\';\n};',
   },
   {
-    name: 'RawEvent',
-    declaration: 'export interface RawEvent {\n    readonly name: string;\n    readonly raw: Record<string, unknown>;\n    readonly domain: string;\n}',
-  },
-  {
-    name: 'RawTable',
-    declaration: 'export interface RawTable {\n    readonly path: string;\n    readonly table_name: string;\n    readonly raw: Record<string, unknown>;\n}',
-  },
-  {
     name: 'ReadFileLine',
     declaration: 'export interface ReadFileLine {\n    number: number;\n    text: string;\n}',
   },
@@ -6314,18 +6095,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'RedactedSecret',
     declaration: 'export interface RedactedSecret {\n    path: string[];\n    set: boolean;\n}',
-  },
-  {
-    name: 'RelationDef',
-    declaration: 'export interface RelationDef {\n    readonly type: string;\n    readonly target: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
-  },
-  {
-    name: 'RelationEdge',
-    declaration: 'export interface RelationEdge {\n    readonly targetId: string;\n    readonly type: string;\n    readonly on?: string;\n    readonly description?: string;\n}',
-  },
-  {
-    name: 'RelationGraph',
-    declaration: 'export class RelationGraph {\n    build(entries: {\n        sourceId: string;\n        relations: RelationDef[];\n    }[], aliasData?: readonly NodeAliasData[]): void;\n    findJoinPath(sourceId: string, targetId: string): string[] | null;\n    getRelated(sourceId: string, type?: string): RelationEdge[];\n    getJoinCondition(sourceId: string, targetId: string): string | null;\n    getDerived(sourceId: string): RelationEdge[];\n    resolveAlias(term: string): string[];\n    getAliases(nodeId: string): string[];\n}',
   },
   {
     name: 'Reload',
@@ -6462,14 +6231,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ScheduledToolPreparation',
     declaration: 'export type ScheduledToolPreparation = {\n    kind: \'dispatch\';\n    exec: ToolRunContext;\n} | {\n    kind: \'post-result\';\n    exec: ToolRunContext;\n    result: ToolExecutionResult;\n} | {\n    kind: \'final-result\';\n    exec: ToolRunContext;\n    result: ToolExecutionResult;\n};',
-  },
-  {
-    name: 'SchemaLike',
-    declaration: 'export interface SchemaLike<T> {\n    parse(raw: unknown): T;\n    safeParse(raw: unknown): {\n        success: boolean;\n        data?: T;\n        error?: unknown;\n    };\n}',
-  },
-  {
-    name: 'SchemaProvider',
-    declaration: 'export interface SchemaProvider {\n    discover(scopeId: string, kind?: string): Promise<readonly TableMeta[]>;\n    describe(tableName: string): Promise<TableMeta | null>;\n    sample(tableName: string, n?: number): Promise<string>;\n}',
   },
   {
     name: 'Scoped',
@@ -7372,16 +7133,8 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type SystemPromptUpdate = \'in-history\';',
   },
   {
-    name: 'TableDefinition',
-    declaration: 'export type TableDefinition = z.infer<typeof TableDefinitionSchema>;',
-  },
-  {
     name: 'TableKeyOf',
     declaration: 'export type TableKeyOf<S extends DomainSpec, N extends keyof S[\'tables\']> = S[\'tables\'][N] extends DomainTableSpec<infer K> ? K : never;',
-  },
-  {
-    name: 'TableMeta',
-    declaration: 'export type TableMeta = z.infer<typeof TableMetaSchema>;',
   },
   {
     name: 'TableValueOf',

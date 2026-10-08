@@ -1,5 +1,7 @@
 # Phase 2 — Ontology Runtime-Wiring + NL2SQL Integration + Metric Engine
 
+> **Note (substrate extraction).** The semantic-layer domain modules this plan cites were extracted into `@semantic-grounding/substrate` and are consumed by dsh as a vendored tarball; `packages/data/semantic-layer/` now holds only the cordis adapter. Source citations below were repointed to the substrate and otherwise left as written.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Wire the existing-but-uninstantiated ontology substrate (registry + RelationGraph + 3 kind plugins) into the `SemanticLayerService` runtime, enrich events with `external_refs`, then integrate the live graph + metrics into the NL2SQL engine (join-path injection, undeclared-JOIN critic, graph recall, and a Level 2.5 deterministic metric-execution path).
@@ -14,7 +16,7 @@
 
 These facts were verified against the real code on 2026-08-22 — they are NOT assumptions:
 
-- **`RelationGraph`** (`packages/data/semantic-layer/src/relation-graph.ts`): `build({sourceId,relations}[])`, `findJoinPath(a,b): string[]|null` (BFS, joins-only), `getRelated(id,type?): RelationEdge[]`, `getJoinCondition(a,b): string|null`, `getDerived(id): RelationEdge[]`. `RelationEdge = {targetId, type:'joins'|'derived_from'|'related_to', on?, description?}`.
+- **`RelationGraph`** (`relation-graph.ts`, extracted to `@semantic-grounding/substrate`): `build({sourceId,relations}[])`, `findJoinPath(a,b): string[]|null` (BFS, joins-only), `getRelated(id,type?): RelationEdge[]`, `getJoinCondition(a,b): string|null`, `getDerived(id): RelationEdge[]`. `RelationEdge = {targetId, type:'joins'|'derived_from'|'related_to', on?, description?}`.
 - **`DataSourceRegistry`** (`src/registry.ts`): `register(p)`, `getKind(kind)`, `allKinds()`, `allPlugins()`. `DataSourceKindPlugin<T> = {kind, schema, storageDir, getId(raw), toCorpusItem(def,term?): CorpusItem|null, toPromptContext(def), toCriticContext?(def), relations(def), toExecutableRule?(def)}`. `CorpusItem = {id, description?, metrics?, payload?}` (structurally identical to nl2sql-engine `DataSourceDoc`).
 - **`tableKindPlugin.toCorpusItem` currently returns `null`** — `tests/registry.spec.ts` asserts this. Part A3 implements it and updates that test.
 - **`metricKindPlugin.toCorpusItem`** returns `{id, description?, payload: def}` where `payload` is the full `MetricDefinition` (`{kind:'metric', computation:{sql, metadata:{source,...}}, ...}`). `toExecutableRule` returns `computation.sql`.
@@ -64,8 +66,8 @@ These facts were verified against the real code on 2026-08-22 — they are NOT a
 ## Task A1: Register kind plugins + expose registry in SemanticLayerService
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/index.ts`
-- Test: `packages/data/semantic-layer/tests/service-wiring.spec.ts` (create)
+- Modify: `@semantic-grounding/substrate/src/index.ts`
+- Test: `@semantic-grounding/substrate/tests/service-wiring.spec.ts` (create)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -89,7 +91,7 @@ test('A1 — service registers all 3 kind plugins', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `svc.getRegistry is not a function`.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: FAIL — `svc.getRegistry is not a function`.
 
 - [ ] **Step 3: Implement — add registry + imports**
 
@@ -135,12 +137,12 @@ Change to:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/data/semantic-layer/src/index.ts packages/data/semantic-layer/tests/service-wiring.spec.ts
+git add @semantic-grounding/substrate/src/index.ts @semantic-grounding/substrate/tests/service-wiring.spec.ts
 git commit -m "feat(semantic-layer): register kind plugins in SemanticLayerService + getRegistry"
 ```
 
@@ -149,8 +151,8 @@ git commit -m "feat(semantic-layer): register kind plugins in SemanticLayerServi
 ## Task A2: Build + expose a cached live RelationGraph
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/index.ts`
-- Test: `packages/data/semantic-layer/tests/service-wiring.spec.ts`
+- Modify: `@semantic-grounding/substrate/src/index.ts`
+- Test: `@semantic-grounding/substrate/tests/service-wiring.spec.ts`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -170,7 +172,7 @@ test('A2 — getRelationGraph builds from tables/events/metrics + caches until c
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `svc.getRelationGraph is not a function`.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: FAIL — `svc.getRelationGraph is not a function`.
 
 - [ ] **Step 3: Implement — add cached graph builder**
 
@@ -217,12 +219,12 @@ In `src/index.ts`, add fields + method to `SemanticLayerService` (after `getRegi
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/data/semantic-layer/src/index.ts packages/data/semantic-layer/tests/service-wiring.spec.ts
+git add @semantic-grounding/substrate/src/index.ts @semantic-grounding/substrate/tests/service-wiring.spec.ts
 git commit -m "feat(semantic-layer): cached live RelationGraph via getRelationGraph (corpusVersion-invalidated)"
 ```
 
@@ -231,11 +233,11 @@ git commit -m "feat(semantic-layer): cached live RelationGraph via getRelationGr
 ## Task A3: Registry-driven full corpus (tables+metrics) + tool wiring
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/kinds/table-kind.ts`
-- Modify: `packages/data/semantic-layer/src/index.ts`
-- Modify: `packages/data/semantic-layer/tests/registry.spec.ts`
+- Modify: `@semantic-grounding/substrate/src/kinds/table-kind.ts`
+- Modify: `@semantic-grounding/substrate/src/index.ts`
+- Modify: `@semantic-grounding/substrate/tests/registry.spec.ts`
 - Modify: `packages/data/tool-search-data-sources/src/index.ts`
-- Test: `packages/data/semantic-layer/tests/service-wiring.spec.ts`
+- Test: `@semantic-grounding/substrate/tests/service-wiring.spec.ts`
 
 - [ ] **Step 1: Write the failing test for `tableKindPlugin.toCorpusItem`**
 
@@ -272,7 +274,7 @@ test('A3b — loadRetrievalCorpusAll includes tables + metrics (not just events)
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `tableKindPlugin.toCorpusItem(DWS)` returns `null` (current impl); `svc.loadRetrievalCorpusAll is not a function`.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: FAIL — `tableKindPlugin.toCorpusItem(DWS)` returns `null` (current impl); `svc.loadRetrievalCorpusAll is not a function`.
 
 - [ ] **Step 3: Implement `tableKindPlugin.toCorpusItem`**
 
@@ -368,7 +370,7 @@ In `src/index.ts`, add to `SemanticLayerService`:
 
 - [ ] **Step 6: Run the service-wiring + registry tests**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts packages/data/semantic-layer/tests/registry.spec.ts` Expected: PASS (both files).
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts @semantic-grounding/substrate/tests/registry.spec.ts` Expected: PASS (both files).
 
 - [ ] **Step 7: Wire `tool-search-data-sources` to prefer `loadRetrievalCorpusAll`**
 
@@ -400,12 +402,12 @@ function getEnrichedLinker(schema: SchemaCorpusSource): Bm25Linker {
 
 - [ ] **Step 8: Run tool tests + K11 seed test (must stay green)**
 
-Run: `pnpm vitest run packages/data/tool-search-data-sources/ packages/data/semantic-layer/tests/k11-seed.spec.ts` Expected: PASS. (`k11-seed.spec.ts` asserts `loadRetrievalCorpus` → 445; that method is unchanged.)
+Run: `pnpm vitest run packages/data/tool-search-data-sources/ @semantic-grounding/substrate/tests/k11-seed.spec.ts` Expected: PASS. (`k11-seed.spec.ts` asserts `loadRetrievalCorpus` → 445; that method is unchanged.)
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add packages/data/semantic-layer/src/kinds/table-kind.ts packages/data/semantic-layer/src/index.ts packages/data/semantic-layer/tests/registry.spec.ts packages/data/semantic-layer/tests/service-wiring.spec.ts packages/data/tool-search-data-sources/src/index.ts
+git add @semantic-grounding/substrate/src/kinds/table-kind.ts @semantic-grounding/substrate/src/index.ts @semantic-grounding/substrate/tests/registry.spec.ts @semantic-grounding/substrate/tests/service-wiring.spec.ts packages/data/tool-search-data-sources/src/index.ts
 git commit -m "feat(semantic-layer): loadRetrievalCorpusAll registry-driven corpus (tables+metrics) + tool-search wiring"
 ```
 
@@ -416,8 +418,8 @@ git commit -m "feat(semantic-layer): loadRetrievalCorpusAll registry-driven corp
 ## Task B1: `enrichAllEvents` + event relation discovery
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/enrichment.ts`
-- Test: `packages/data/semantic-layer/tests/enrichment.spec.ts`
+- Modify: `@semantic-grounding/substrate/src/enrichment.ts`
+- Test: `@semantic-grounding/substrate/tests/enrichment.spec.ts`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -513,7 +515,7 @@ describe('enrichAllEvents', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/enrichment.spec.ts` Expected: FAIL — `discoverEventRelationsDeterministic`/`buildEventLlmPrompt`/`enrichAllEvents` not exported.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/enrichment.spec.ts` Expected: FAIL — `discoverEventRelationsDeterministic`/`buildEventLlmPrompt`/`enrichAllEvents` not exported.
 
 - [ ] **Step 3: Implement the event enrichment functions**
 
@@ -705,12 +707,12 @@ export {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/enrichment.spec.ts` Expected: PASS.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/enrichment.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/data/semantic-layer/src/enrichment.ts packages/data/semantic-layer/src/index.ts packages/data/semantic-layer/tests/enrichment.spec.ts
+git add @semantic-grounding/substrate/src/enrichment.ts @semantic-grounding/substrate/src/index.ts @semantic-grounding/substrate/tests/enrichment.spec.ts
 git commit -m "feat(semantic-layer): enrichAllEvents — discover + write events external_refs (two-round)"
 ```
 
@@ -719,8 +721,8 @@ git commit -m "feat(semantic-layer): enrichAllEvents — discover + write events
 ## Task B2: `discoverEventRelations` Service method
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/index.ts`
-- Test: `packages/data/semantic-layer/tests/service-wiring.spec.ts`
+- Modify: `@semantic-grounding/substrate/src/index.ts`
+- Test: `@semantic-grounding/substrate/tests/service-wiring.spec.ts`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -774,7 +776,7 @@ test('B2 — discoverEventRelations writes events external_refs via the Service'
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `svc.discoverEventRelations is not a function`.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: FAIL — `svc.discoverEventRelations is not a function`.
 
 - [ ] **Step 3: Implement the Service method**
 
@@ -815,12 +817,12 @@ Add the method to `SemanticLayerService` (after `discoverRelations`):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/data/semantic-layer/src/index.ts packages/data/semantic-layer/tests/service-wiring.spec.ts
+git add @semantic-grounding/substrate/src/index.ts @semantic-grounding/substrate/tests/service-wiring.spec.ts
 git commit -m "feat(semantic-layer): discoverEventRelations Service method (events external_refs)"
 ```
 
@@ -831,8 +833,8 @@ git commit -m "feat(semantic-layer): discoverEventRelations Service method (even
 > **Scope reality (verified 2026-08-22):** `ctx.schema` is NOT mounted in any bundle (`apps/` has no `dsh-semantic-layer` row), and `ctx.llm`/BlockAssembler does not exist anywhere in the repo. So B3's *production* wiring is blocked on bundle-layer infra that is out of this plan's code scope. B3 here delivers a **testable adapter + wiring seam**; production activation is a one-liner the bundle adds once `ctx.schema` + `ctx.llm` are mounted. Without B3, B1 still runs the deterministic round (enrichment is not blocked — it just can't do the LLM round in production).
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/index.ts`
-- Test: `packages/data/semantic-layer/tests/service-wiring.spec.ts`
+- Modify: `@semantic-grounding/substrate/src/index.ts`
+- Test: `@semantic-grounding/substrate/tests/service-wiring.spec.ts`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -858,7 +860,7 @@ test('B3 — wireEnrichmentLlm adapts a text-LLM into the Service llmCall seam',
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: FAIL — `wireEnrichmentLlm` not exported.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: FAIL — `wireEnrichmentLlm` not exported.
 
 - [ ] **Step 3: Implement the adapter + seam**
 
@@ -892,12 +894,12 @@ export function wireEnrichmentLlm(schema: { setLlmCall(fn?: (prompt: string) => 
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS.
+Run: `pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/data/semantic-layer/src/index.ts packages/data/semantic-layer/tests/service-wiring.spec.ts
+git add @semantic-grounding/substrate/src/index.ts @semantic-grounding/substrate/tests/service-wiring.spec.ts
 git commit -m "feat(semantic-layer): wireEnrichmentLlm adapter seam (production mount deferred to bundle layer)"
 ```
 

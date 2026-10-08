@@ -1,5 +1,7 @@
 # C + Self-Evolution Implementation Plan
 
+> **Note (substrate extraction).** The semantic-layer domain modules this plan cites were extracted into `@semantic-grounding/substrate` and are consumed by dsh as a vendored tarball; `packages/data/semantic-layer/` now holds only the cordis adapter. Source citations below were repointed to the substrate and otherwise left as written.
+
 ## Context
 
 M1 重构后 metric 是派生视图，但 Phase 1 的 `qualifyTableName` 误用 `config.yaml project.name`（游戏 scope 标识 `game_10000251`，**非 ODPS project**）→ DAU 查询 qualified `game_10000251.dws_...` ODPS 找不到（表实际在 `ieu_cdm`）。C 重构移 `qualifyTable` 到 query provider（读 maxc `default_project=ieu_cdm`）解阻塞 + 回归 engine-agnostic。self-evolution（M2 #1/#2/#3）让 agent 遇 TABLE_NOT_FOUND 时问用户 project + 写 per-table override + 重试。
@@ -16,7 +18,7 @@ M1 重构后 metric 是派生视图，但 Phase 1 的 `qualifyTableName` 误用 
 
 ## File Structure
 
-**Modify**: `packages/query/query/src/index.ts`（QueryEngine abstract qualifyTable）、`packages/query/query-maxcompute/src/index.ts`（Config.defaultProject + impl + decodeResult 分类）、`packages/bundle/data-agent/cordis.patch.yml`（defaultProject: ieu_cdm）、`packages/data/tool-search-data-sources/src/index.ts`（qualifyCandidates 调 ctx.query + SearchHit project）、`packages/data/tool-load-table-definition/src/index.ts`（删 qualified_name）、`packages/data/semantic-layer/src/index.ts`（删 qualifyTableName:405-446）、`packages/data/semantic-layer/src/types.ts`（TableDefinitionSchema project）、`packages/data/phase-gate/src/types.ts`（UNIVERSAL+GENERATION whitelist）、`packages/data/phase-gate/src/phase-gate.ts`（onTurnStopping HALT + executionDecision inject）、`packages/identity/identity/src/index.ts`（CallerIdentity role）、`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`（2 新工具行）
+**Modify**: `packages/query/query/src/index.ts`（QueryEngine abstract qualifyTable）、`packages/query/query-maxcompute/src/index.ts`（Config.defaultProject + impl + decodeResult 分类）、`packages/bundle/data-agent/cordis.patch.yml`（defaultProject: ieu_cdm）、`packages/data/tool-search-data-sources/src/index.ts`（qualifyCandidates 调 ctx.query + SearchHit project）、`packages/data/tool-load-table-definition/src/index.ts`（删 qualified_name）、`@semantic-grounding/substrate/src/index.ts`（删 qualifyTableName:405-446）、`@semantic-grounding/substrate/src/types.ts`（TableDefinitionSchema project）、`packages/data/phase-gate/src/types.ts`（UNIVERSAL+GENERATION whitelist）、`packages/data/phase-gate/src/phase-gate.ts`（onTurnStopping HALT + executionDecision inject）、`packages/identity/identity/src/index.ts`（CallerIdentity role）、`packages/bundle/data-agent/presets/data-agent/agent.cordis.yml`（2 新工具行）
 
 **Create**: `packages/data/tool-present-clarification/`、`packages/data/tool-update-table-config/`
 

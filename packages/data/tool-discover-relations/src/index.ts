@@ -17,8 +17,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, GenericResultView, ToolResult } from '@deepseek-ai/dsh-tools'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
-import { loadTables, TableDefinitionSchema } from '@deepseek-ai/dsh-semantic-layer'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
+import { loadTables, TableDefinitionSchema } from '@semantic-grounding/substrate'
 
 export const name = 'tool-discover-relations'
 export const inject = ['tools']
@@ -350,7 +350,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
       if (exec.signal.aborted) {
         throw new Error('discover_relations aborted before enriching')
       }
-      const schema = ctx.get('schema')
+      const schema = ctx.get('schema') as SemanticLayerService | undefined
       return discoverRelationsResult(schema, args.tables)
     },
     presentCall(args): GenericCallView {

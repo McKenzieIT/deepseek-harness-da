@@ -1,5 +1,7 @@
 # Virtual Metric Projection Implementation Plan
 
+> **Note (substrate extraction).** The semantic-layer domain modules this plan cites were extracted into `@semantic-grounding/substrate` and are consumed by dsh as a vendored tarball; `packages/data/semantic-layer/` now holds only the cordis adapter. Source citations below were repointed to the substrate and otherwise left as written.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Refactor the semantic-layer metric model from 3916 standalone metric YAMLs + a registered `metric-kind` plugin into runtime virtual projection — metrics derived at retrieval time from table/event embedded `metrics:` blocks, with `execute_metric` + Level 2.5 deterministic path removed (M1b: actively wrong on `_df` snapshot SUM metrics).
@@ -15,26 +17,26 @@
 ## File Structure
 
 **Modified:**
-- `packages/data/semantic-layer/src/types.ts` — add `MetricDefinitionSchema` + `MetricDefinition` + `CaliberVariantSchema` (moved from metric-kind.ts; add `caliber_variants` field)
-- `packages/data/semantic-layer/src/metrics.ts` — import schema from types.ts; `toMetricDefinition` carries `caliber_variants`; add pure `projectMetricCorpusItem` + `deriveMetricRelations`; `loadMetricDefinitions` derives from table/event (no `metrics/` dir read)
-- `packages/data/semantic-layer/src/index.ts` — drop `metricKindPlugin` import/register; `getRelationGraph` derives metric nodes; drop `loadByStorageDir('metrics')` branch; `loadMetricDefinition(name)` derives from host; `loadRetrievalCorpusAll` runs derivation pass
+- `@semantic-grounding/substrate/src/types.ts` — add `MetricDefinitionSchema` + `MetricDefinition` + `CaliberVariantSchema` (moved from metric-kind.ts; add `caliber_variants` field)
+- `@semantic-grounding/substrate/src/metrics.ts` — import schema from types.ts; `toMetricDefinition` carries `caliber_variants`; add pure `projectMetricCorpusItem` + `deriveMetricRelations`; `loadMetricDefinitions` derives from table/event (no `metrics/` dir read)
+- `@semantic-grounding/substrate/src/index.ts` — drop `metricKindPlugin` import/register; `getRelationGraph` derives metric nodes; drop `loadByStorageDir('metrics')` branch; `loadMetricDefinition(name)` derives from host; `loadRetrievalCorpusAll` runs derivation pass
 - `packages/data/nl2sql-engine/src/engine.ts` — delete Level 2.5 branch (lines ~165-210); keep `buildMetricContext` Level 2 injection
 - `packages/data/nl2sql-engine/src/metric-engine.ts` — delete `buildExecutableSQL`; `routeMetric` returns `'level-2' | null` only
 - `packages/data/phase-gate/src/phase-gate.ts` — delete `execute_metric` from UNDERSTANDING prompt (METRIC SHORTCUT)
 - `packages/data/phase-gate/src/types.ts` — delete `'execute_metric'` from `UNDERSTANDING_TOOLS`
 - `packages/bundle/data-agent/presets/data-agent/agent.cordis.yml` — delete `tool-execute-metric` row (lines 104-105)
 - `apps/cli/package.json` — drop `@deepseek-ai/dsh-tool-execute-metric` dep (if present)
-- `packages/data/semantic-layer/src/index.ts` exports — drop `metricKindPlugin`, keep `MetricDefinition`/`MetricDefinitionSchema` from types.ts
+- `@semantic-grounding/substrate/src/index.ts` exports — drop `metricKindPlugin`, keep `MetricDefinition`/`MetricDefinitionSchema` from types.ts
 
 **Deleted:**
-- the `metric-kind.ts` leaf in `packages/data/semantic-layer/src/kinds/` (deleted — entire file; schema moved, methods moved, dead code removed)
+- the `metric-kind.ts` leaf in `@semantic-grounding/substrate/src/kinds/` (deleted — entire file; schema moved, methods moved, dead code removed)
 - `packages/data/tool-execute-metric/` (entire package — tool + tests + package.json)
 - `examples/k11-semantic-layer/metrics/` (3916 files — pure mechanical projection, zero information loss per M1c)
-- `packages/data/semantic-layer/src/metrics.ts` `seedMetrics` (no longer writes standalone YAMLs)
+- `@semantic-grounding/substrate/src/metrics.ts` `seedMetrics` (no longer writes standalone YAMLs)
 
 **Tests:**
-- `packages/data/semantic-layer/tests/metrics.spec.ts` (new or extend) — derivation pure functions
-- `packages/data/semantic-layer/tests/registry.spec.ts` — remove metricKindPlugin tests
+- `@semantic-grounding/substrate/tests/metrics.spec.ts` (new or extend) — derivation pure functions
+- `@semantic-grounding/substrate/tests/registry.spec.ts` — remove metricKindPlugin tests
 - `packages/data/nl2sql-engine/tests/metric-engine.spec.ts` — drop L2.5 assertions
 - `packages/data/nl2sql-engine/tests/comparison.spec.ts` — fold into single L2 eval or delete
 
@@ -43,7 +45,7 @@
 ### Task 1: Add MetricDefinition schema + CaliberVariant to types.ts
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/types.ts` (after existing `MetricDefSchema` ~line 118)
+- Modify: `@semantic-grounding/substrate/src/types.ts` (after existing `MetricDefSchema` ~line 118)
 
 - [ ] **Step 1: Add CaliberVariantSchema + MetricDefinitionSchema to types.ts**
 
@@ -103,7 +105,7 @@ Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm tsc -b packages/d
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/data/semantic-layer/src/types.ts
+git add @semantic-grounding/substrate/src/types.ts
 git commit -m "refactor(semantic-layer): add MetricDefinitionSchema + CaliberVariant to types.ts"
 ```
 
@@ -112,12 +114,12 @@ git commit -m "refactor(semantic-layer): add MetricDefinitionSchema + CaliberVar
 ### Task 2: metrics.ts — carry caliber_variants + derivation pure functions + loadMetricDefinitions derives
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/metrics.ts`
-- Test: `packages/data/semantic-layer/tests/metrics-derivation.spec.ts` (new)
+- Modify: `@semantic-grounding/substrate/src/metrics.ts`
+- Test: `@semantic-grounding/substrate/tests/metrics-derivation.spec.ts` (new)
 
 - [ ] **Step 1: Write failing test for derivation + caliber carry**
 
-Create `packages/data/semantic-layer/tests/metrics-derivation.spec.ts`:
+Create `@semantic-grounding/substrate/tests/metrics-derivation.spec.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest'
@@ -153,11 +155,11 @@ describe('metric derivation (M1 virtual projection)', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/metrics-derivation.spec.ts` Expected: FAIL — `projectMetricCorpusItem` / `deriveMetricRelations` not exported; `caliber_variants` not carried.
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run @semantic-grounding/substrate/tests/metrics-derivation.spec.ts` Expected: FAIL — `projectMetricCorpusItem` / `deriveMetricRelations` not exported; `caliber_variants` not carried.
 
 - [ ] **Step 3: Update metrics.ts — import from types.ts, carry caliber, add pure functions**
 
-In `packages/data/semantic-layer/src/metrics.ts`:
+In `@semantic-grounding/substrate/src/metrics.ts`:
 
 Change the import (line ~23):
 ```typescript
@@ -224,12 +226,12 @@ export function loadMetricDefinitions(semanticLayer: string): MetricDefinition[]
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/metrics-derivation.spec.ts` Expected: PASS (3 tests)
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run @semantic-grounding/substrate/tests/metrics-derivation.spec.ts` Expected: PASS (3 tests)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/data/semantic-layer/src/metrics.ts packages/data/semantic-layer/tests/metrics-derivation.spec.ts
+git add @semantic-grounding/substrate/src/metrics.ts @semantic-grounding/substrate/tests/metrics-derivation.spec.ts
 git commit -m "refactor(semantic-layer): metrics.ts derivation pure functions + carry caliber_variants"
 ```
 
@@ -238,12 +240,12 @@ git commit -m "refactor(semantic-layer): metrics.ts derivation pure functions + 
 ### Task 3: index.ts — drop metricKindPlugin, wire derivation pass + derive loadMetricDefinition + getRelationGraph
 
 **Files:**
-- Modify: `packages/data/semantic-layer/src/index.ts`
-- Test: `packages/data/semantic-layer/tests/service-wiring.spec.ts` (extend)
+- Modify: `@semantic-grounding/substrate/src/index.ts`
+- Test: `@semantic-grounding/substrate/tests/service-wiring.spec.ts` (extend)
 
 - [ ] **Step 1: Write failing test — loadMetricDefinition derives from host + loadRetrievalCorpusAll emits virtual metric items**
 
-Add to `packages/data/semantic-layer/tests/service-wiring.spec.ts`:
+Add to `@semantic-grounding/substrate/tests/service-wiring.spec.ts`:
 ```typescript
 import { describe, it, expect } from 'vitest'
 // (use the existing Service wiring harness; these are additional cases)
@@ -266,7 +268,7 @@ describe('M1 virtual metric projection', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts -t "virtual metric projection"` Expected: FAIL — `loadMetricDefinition` still reads standalone files; `loadRetrievalCorpusAll` doesn't emit virtual items.
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts -t "virtual metric projection"` Expected: FAIL — `loadMetricDefinition` still reads standalone files; `loadRetrievalCorpusAll` doesn't emit virtual items.
 
 - [ ] **Step 3: Modify index.ts**
 
@@ -341,13 +343,13 @@ for (const plugin of this.registry.allPlugins()) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts` Expected: PASS
+Run: `cd /Users/mckenzie/workspace/deepseek-harness-da && pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts` Expected: PASS
 
 - [ ] **Step 5: Typecheck + commit**
 
 ```bash
 pnpm tsc -b packages/data/semantic-layer/tsconfig.json --noEmit 2>&1 | grep "index.ts" || echo "index.ts clean"
-git add packages/data/semantic-layer/src/index.ts packages/data/semantic-layer/tests/service-wiring.spec.ts
+git add @semantic-grounding/substrate/src/index.ts @semantic-grounding/substrate/tests/service-wiring.spec.ts
 git commit -m "refactor(semantic-layer): wire virtual metric projection in Service"
 ```
 
@@ -356,14 +358,14 @@ git commit -m "refactor(semantic-layer): wire virtual metric projection in Servi
 ### Task 4: Delete metric-kind.ts + fix registry.spec.ts
 
 **Files:**
-- Delete: the `metric-kind.ts` file in `packages/data/semantic-layer/src/kinds/`
-- Modify: `packages/data/semantic-layer/tests/registry.spec.ts`
+- Delete: the `metric-kind.ts` file in `@semantic-grounding/substrate/src/kinds/`
+- Modify: `@semantic-grounding/substrate/tests/registry.spec.ts`
 
 - [ ] **Step 1: Delete metric-kind.ts**
 
 ```bash
 cd /Users/mckenzie/workspace/deepseek-harness-da
-# metric-kind.ts deleted from packages/data/semantic-layer/src/kinds/
+# metric-kind.ts deleted from @semantic-grounding/substrate/src/kinds/
 ```
 
 - [ ] **Step 2: Remove metricKindPlugin tests from registry.spec.ts**
@@ -374,7 +376,7 @@ Delete the `// ── metricKindPlugin — G2 aligned ───` section (~line 
 
 ```bash
 pnpm tsc -b packages/data/semantic-layer/tsconfig.json --noEmit 2>&1 | grep -E "kinds/metric-kind|registry" || echo "clean"
-pnpm vitest run packages/data/semantic-layer/tests/registry.spec.ts
+pnpm vitest run @semantic-grounding/substrate/tests/registry.spec.ts
 ```
 Expected: clean + PASS
 
@@ -492,7 +494,7 @@ git commit -m "refactor: delete execute_metric tool + Level 2.5 preset/whitelist
 
 **Files:**
 - Delete: `examples/k11-semantic-layer/metrics/` (3916 files)
-- Modify: `packages/data/semantic-layer/src/metrics.ts` (delete `seedMetrics`)
+- Modify: `@semantic-grounding/substrate/src/metrics.ts` (delete `seedMetrics`)
 
 - [ ] **Step 1: Delete the metrics directory**
 
@@ -503,19 +505,19 @@ rm -rf examples/k11-semantic-layer/metrics/
 
 - [ ] **Step 2: Delete seedMetrics from metrics.ts**
 
-In `packages/data/semantic-layer/src/metrics.ts`: delete the `seedMetrics` function (the one that calls `writeMetricDefinitions(extractMetricsFromTables(...))`) and its export from `index.ts` if re-exported.
+In `@semantic-grounding/substrate/src/metrics.ts`: delete the `seedMetrics` function (the one that calls `writeMetricDefinitions(extractMetricsFromTables(...))`) and its export from `index.ts` if re-exported.
 
 - [ ] **Step 3: Verify loadMetricDefinitions still derives (no file read)**
 
 ```bash
-pnpm vitest run packages/data/semantic-layer/tests/service-wiring.spec.ts packages/data/semantic-layer/tests/metrics-derivation.spec.ts
+pnpm vitest run @semantic-grounding/substrate/tests/service-wiring.spec.ts @semantic-grounding/substrate/tests/metrics-derivation.spec.ts
 ```
 Expected: PASS (derivation is runtime, no `metrics/` dir needed)
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add -A examples/k11-semantic-layer/metrics/ packages/data/semantic-layer/src/metrics.ts packages/data/semantic-layer/src/index.ts
+git add -A examples/k11-semantic-layer/metrics/ @semantic-grounding/substrate/src/metrics.ts @semantic-grounding/substrate/src/index.ts
 git commit -m "refactor(semantic-layer): delete 3916 metric YAMLs + seedMetrics (virtual projection)"
 ```
 
@@ -538,7 +540,7 @@ Record results in `wayfinder/data-agent/research/experiment-audit-log.md` (M1 en
 - [ ] **Step 2: Full semantic-layer + nl2sql-engine + phase-gate test suite**
 
 ```bash
-pnpm vitest run packages/data/semantic-layer/tests/ packages/data/nl2sql-engine/tests/ packages/data/phase-gate/tests/ --reporter=dot 2>&1 | tail -8
+pnpm vitest run @semantic-grounding/substrate/tests/ packages/data/nl2sql-engine/tests/ packages/data/phase-gate/tests/ --reporter=dot 2>&1 | tail -8
 ```
 Expected: all pass
 

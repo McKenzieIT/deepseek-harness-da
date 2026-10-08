@@ -14,7 +14,7 @@
  * injected into candidateTables; the same config feeds the prompt here).
  */
 import { loadConventions } from '@deepseek-ai/dsh-query-maxcompute/src/conventions.ts'
-import { loadConfig, resolveSemanticLayer } from '@deepseek-ai/dsh-semantic-layer'
+import { loadConfig, resolveSemanticLayer } from '@semantic-grounding/substrate'
 
 /**
  * The scope-specific fields needed to assemble SQL conventions.

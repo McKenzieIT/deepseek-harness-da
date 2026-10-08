@@ -31,7 +31,7 @@
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-semantic-layer": "workspace:^",
+    "@semantic-grounding/substrate": "^0.1.6-alpha.2",
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^"
   },
@@ -41,7 +41,7 @@
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-semantic-layer": "workspace:^",
+    "@semantic-grounding/substrate": "^0.1.6-alpha.2",
     "@deepseek-ai/dsh-audit": "workspace:^",
     "@deepseek-ai/dsh-identity": "workspace:^"
   }

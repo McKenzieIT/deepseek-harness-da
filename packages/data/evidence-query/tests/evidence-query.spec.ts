@@ -8,6 +8,41 @@ import yaml from 'js-yaml'
 import { EvidenceQueryService, EvalResultStore } from '../src/index.ts'
 import type { EvalResultRecord, ProposedRelation } from '../src/types.ts'
 
+/**
+ * Mount the semantic-grounding core under the `schema` seam the way the
+ * `@deepseek-ai/dsh-semantic-layer` adapter's `apply()` does.
+ *
+ * The core takes its optional collaborators by setter, so `ctx.provide` alone
+ * leaves the scope registry unwired and every scope lookup silently falls back
+ * to the config root instead of resolving (or failing loud on) a named scope.
+ * `audit` is passed through as-is — `undefined` is correct and keeps Tier-2
+ * writes throwing (D5 / ADR-0001); never substitute a no-op recorder.
+ */
+function provideSchema(ctx: Context, config: ConstructorParameters<typeof SemanticLayerService>[0]): SemanticLayerService {
+  const core = new SemanticLayerService(config)
+  // Immediate set covers collaborators already present at mount time; the
+  // nested `ctx.inject` fibers cover the ones a test provides afterwards, which
+  // is how the adapter's `apply()` does it and what the pre-cutover Service got
+  // for free by re-probing `ctx.get(...)` on every use.
+  core.setScopeRegistry(ctx.get('scopes') as never)
+  core.setTier2Recorder(ctx.get('audit'))
+  ctx.inject(['scopes'], (scopeCtx: Context) => {
+    scopeCtx.effect(() => {
+      core.setScopeRegistry(scopeCtx.get('scopes') as never)
+      return () => { core.setScopeRegistry(undefined) }
+    })
+  })
+  ctx.inject(['audit'], (auditCtx: Context) => {
+    auditCtx.effect(() => {
+      core.setTier2Recorder(auditCtx.get('audit'))
+      return () => { core.setTier2Recorder(undefined) }
+    })
+  })
+  ctx.provide('schema', core)
+  return core
+}
+
+
 const dirs: string[] = []
 
 afterEach(() => {
@@ -111,7 +146,7 @@ function seedLayer(): string {
 function makeService(evalStore?: EvalResultStore): EvidenceQueryService {
   const dir = seedLayer()
   const ctx = new Context()
-  new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+  provideSchema(ctx, { semanticRoot: dir, scopeId: 'test' })
   return new EvidenceQueryService(ctx, evalStore)
 }
 
@@ -141,7 +176,7 @@ function makeConfirmationStatusService(): EvidenceQueryService {
   }
 
   const ctx = new Context()
-  new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+  provideSchema(ctx, { semanticRoot: dir, scopeId: 'test' })
   return new EvidenceQueryService(ctx)
 }
 
@@ -599,7 +634,7 @@ describe('EvidenceQueryService.reachabilityDelta — A10 incremental BFS', () =>
   function makeChainService(chainLen: number): EvidenceQueryService {
     const dir = seedTwoChainLayer(chainLen)
     const ctx = new Context()
-    new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+    provideSchema(ctx, { semanticRoot: dir, scopeId: 'test' })
     return new EvidenceQueryService(ctx)
   }
 

@@ -18,8 +18,8 @@ import {
   TableDefinitionSchema,
   EventDefinitionSchema,
   ConceptDefinitionSchema,
-} from '@deepseek-ai/dsh-semantic-layer'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+} from '@semantic-grounding/substrate'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 
 export const name = 'tool-list-domains'
 export const inject = ['tools']
@@ -166,7 +166,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
     },
     execute(_args, exec) {
       if (exec.signal.aborted) throw new Error('list_domains aborted')
-      const schema = ctx.get('schema')
+      const schema = ctx.get('schema') as SemanticLayerService | undefined
       return Promise.resolve(listDomainsResult(schema))
     },
   }))

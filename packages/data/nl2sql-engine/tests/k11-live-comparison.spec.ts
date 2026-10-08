@@ -1,13 +1,15 @@
 import { test, expect } from 'vitest'
 import { K11_JOIN_CASES, scoreJoinStructural } from '../src/eval/k11-join-cases.ts'
 import { runLiveComparison } from '../src/eval/live-comparison-runner.ts'
-// Integration test: reaches into semantic-layer internals to build the real K11
-// relation graph (the nl2sql-engine has no runtime dep on semantic-layer by design;
+// Integration test: builds the real K11 relation graph from the semantic-grounding
+// substrate (the nl2sql-engine has no runtime dep on the semantic layer by design;
 // this test validates the structural interface contract against the real graph).
-import { RelationGraph } from '../../semantic-layer/src/relation-graph.ts'
-import { tableKindPlugin } from '../../semantic-layer/src/kinds/table-kind.ts'
-import { loadTables } from '../../semantic-layer/src/io.ts'
-import { TableDefinitionSchema } from '../../semantic-layer/src/types.ts'
+import {
+  RelationGraph,
+  tableKindPlugin,
+  loadTables,
+  TableDefinitionSchema,
+} from '@semantic-grounding/substrate'
 import type { Llm, LlmGenerateArgs, LlmGenerateResult } from '../src/replay-llm.ts'
 import type { DataSourceDoc } from '../src/bm25-linking.ts'
 import { resolve } from 'path'

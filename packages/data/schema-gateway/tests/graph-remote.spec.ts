@@ -19,6 +19,41 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import SchemaGateway from '../src/index.ts'
 
+/**
+ * Mount the semantic-grounding core under the `schema` seam the way the
+ * `@deepseek-ai/dsh-semantic-layer` adapter's `apply()` does.
+ *
+ * The core takes its optional collaborators by setter, so `ctx.provide` alone
+ * leaves the scope registry unwired and every scope lookup silently falls back
+ * to the config root instead of resolving (or failing loud on) a named scope.
+ * `audit` is passed through as-is — `undefined` is correct and keeps Tier-2
+ * writes throwing (D5 / ADR-0001); never substitute a no-op recorder.
+ */
+function provideSchema(ctx: Context, config: ConstructorParameters<typeof SemanticLayerService>[0]): SemanticLayerService {
+  const core = new SemanticLayerService(config)
+  // Immediate set covers collaborators already present at mount time; the
+  // nested `ctx.inject` fibers cover the ones a test provides afterwards, which
+  // is how the adapter's `apply()` does it and what the pre-cutover Service got
+  // for free by re-probing `ctx.get(...)` on every use.
+  core.setScopeRegistry(ctx.get('scopes') as never)
+  core.setTier2Recorder(ctx.get('audit'))
+  ctx.inject(['scopes'], (scopeCtx: Context) => {
+    scopeCtx.effect(() => {
+      core.setScopeRegistry(scopeCtx.get('scopes') as never)
+      return () => { core.setScopeRegistry(undefined) }
+    })
+  })
+  ctx.inject(['audit'], (auditCtx: Context) => {
+    auditCtx.effect(() => {
+      core.setTier2Recorder(auditCtx.get('audit'))
+      return () => { core.setTier2Recorder(undefined) }
+    })
+  })
+  ctx.provide('schema', core)
+  return core
+}
+
+
 const dirs: string[] = []
 
 afterEach(() => {
@@ -74,7 +109,8 @@ function seedGraphRoot(): string {
 function makeGraphGateway(): { gw: SchemaGateway; svc: SemanticLayerService; ctx: Context } {
   const root = seedGraphRoot()
   const ctx = new Context()
-  const svc = new SemanticLayerService(ctx, { semanticRoot: root, scopeId: '' })
+  const svc = new SemanticLayerService({ semanticRoot: root, scopeId: '' })
+  ctx.provide('schema', svc)
   svc.getRegistry().register(chartKind)
   const gw = new SchemaGateway(ctx)
   return { gw, svc, ctx }
@@ -127,7 +163,8 @@ describe('SchemaGateway.getGraphData through real @Remote service (W27)', () => 
   it('invalidates the graph cache on contributor dispose and reloads with the registry alive', async () => {
     const root = seedGraphRoot()
     const ctx = new Context()
-    const svc = new SemanticLayerService(ctx, { semanticRoot: root, scopeId: '' })
+    const svc = new SemanticLayerService({ semanticRoot: root, scopeId: '' })
+    ctx.provide('schema', svc)
     const gw = new SchemaGateway(ctx)
 
     // Register the chart kind via a fiber-tracked effect so it can be disposed.
@@ -171,7 +208,7 @@ describe('SchemaGateway.getGraphData through real @Remote service (W27)', () => 
   it('propagates Host scope-resolution failures (unknown scope throws)', async () => {
     const root = seedGraphRoot()
     const ctx = new Context()
-    new SemanticLayerService(ctx, { semanticRoot: root, scopeId: '' })
+    provideSchema(ctx, { semanticRoot: root, scopeId: '' })
     const gw = new SchemaGateway(ctx)
 
     // Provide a scopes service that returns undefined for any scope id —

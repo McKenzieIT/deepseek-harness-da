@@ -10,8 +10,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { loadTables } from '@deepseek-ai/dsh-semantic-layer/src/io.ts'
-import { TableDefinitionSchema } from '@deepseek-ai/dsh-semantic-layer/src/types.ts'
+import { loadTables, TableDefinitionSchema } from '@semantic-grounding/substrate'
 
 const SEMANTIC_ROOT = join(import.meta.dirname!, '../../../../examples/k11-semantic-layer')
 const REVIEW_DIR = join(import.meta.dirname!, '../../../../eval-results/cl9')

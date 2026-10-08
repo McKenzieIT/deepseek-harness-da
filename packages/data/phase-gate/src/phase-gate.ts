@@ -29,8 +29,7 @@ import { ToolCallId, ReasoningEffortId, createUserMessage, type GenerateOptions,
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import { PERSONA_PREFIX_SECTION, type PromptAssembly, type AssembleContext, type AssembledSection } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-scope-registry'
-import type {} from '@deepseek-ai/dsh-semantic-layer'
-import { loadConfig } from '@deepseek-ai/dsh-semantic-layer'
+import { loadConfig } from '@semantic-grounding/substrate'
 import type { ToolExecution, PostToolDecision, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import {
   Phase,

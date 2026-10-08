@@ -1,11 +1,48 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
-import { SemanticLayerService, type DataSourceKindPlugin, type GraphNodeProjection } from '@deepseek-ai/dsh-semantic-layer'
+import { SemanticLayerService, type DataSourceKindPlugin } from '@deepseek-ai/dsh-semantic-layer'
+import type { GraphNodeProjection } from '@semantic-grounding/substrate'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import yaml from 'js-yaml'
 import SchemaGateway from '../src/index.ts'
+
+/**
+ * Mount the semantic-grounding core under the `schema` seam the way the
+ * `@deepseek-ai/dsh-semantic-layer` adapter's `apply()` does.
+ *
+ * The core takes its optional collaborators by setter, so `ctx.provide` alone
+ * leaves the scope registry unwired and every scope lookup silently falls back
+ * to the config root instead of resolving (or failing loud on) a named scope.
+ * `audit` is passed through as-is — `undefined` is correct and keeps Tier-2
+ * writes throwing (D5 / ADR-0001); never substitute a no-op recorder.
+ */
+function provideSchema(ctx: Context, config: ConstructorParameters<typeof SemanticLayerService>[0]): SemanticLayerService {
+  const core = new SemanticLayerService(config)
+  // Immediate set covers collaborators already present at mount time; the
+  // nested `ctx.inject` fibers cover the ones a test provides afterwards, which
+  // is how the adapter's `apply()` does it and what the pre-cutover Service got
+  // for free by re-probing `ctx.get(...)` on every use.
+  core.setScopeRegistry(ctx.get('scopes') as never)
+  core.setTier2Recorder(ctx.get('audit'))
+  ctx.inject(['scopes'], (scopeCtx: Context) => {
+    scopeCtx.effect(() => {
+      core.setScopeRegistry(scopeCtx.get('scopes') as never)
+      return () => { core.setScopeRegistry(undefined) }
+    })
+  })
+  ctx.inject(['audit'], (auditCtx: Context) => {
+    auditCtx.effect(() => {
+      core.setTier2Recorder(auditCtx.get('audit'))
+      return () => { core.setTier2Recorder(undefined) }
+    })
+  })
+  ctx.provide('schema', core)
+  return core
+}
+
 
 const dirs: string[] = []
 
@@ -92,7 +129,7 @@ async function makeGateway(): Promise<SchemaGateway> {
   const dir = seedLayer()
   const { Context } = await import('@deepseek-ai/cordis')
   const ctx = new Context()
-  new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+  provideSchema(ctx, { semanticRoot: dir, scopeId: 'test' })
   return new SchemaGateway(ctx)
 }
 
@@ -102,7 +139,8 @@ async function makeGatewayEx(): Promise<{ gw: SchemaGateway; svc: SemanticLayerS
   const dir = seedLayer()
   const { Context } = await import('@deepseek-ai/cordis')
   const ctx = new Context()
-  const svc = new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+  const svc = new SemanticLayerService({ semanticRoot: dir, scopeId: 'test' })
+  ctx.provide('schema', svc)
   const gw = new SchemaGateway(ctx)
   return { gw, svc, dir }
 }
@@ -123,7 +161,8 @@ async function makeGatewayWithSpies(): Promise<{
   const dir = seedLayer()
   const { Context } = await import('@deepseek-ai/cordis')
   const ctx = new Context()
-  const svc = new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+  const svc = new SemanticLayerService({ semanticRoot: dir, scopeId: 'test' })
+  ctx.provide('schema', svc)
   const getRelationGraphCalls: (string | undefined)[] = []
   const corpusVersionCalls: (string | undefined)[] = []
   const stubGraph = {
@@ -334,7 +373,8 @@ describe('SchemaGateway', () => {
     const dir = seedLayer()
     const { Context } = await import('@deepseek-ai/cordis')
     const ctx = new Context()
-    const svc = new SemanticLayerService(ctx, { semanticRoot: dir, scopeId: 'test' })
+    const svc = new SemanticLayerService({ semanticRoot: dir, scopeId: 'test' })
+    ctx.provide('schema', svc)
 
     let activeVersion = 1
     let loadCalls = 0

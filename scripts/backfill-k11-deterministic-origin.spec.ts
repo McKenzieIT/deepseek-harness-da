@@ -25,13 +25,12 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'nod
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import yaml from 'js-yaml'
-import { dumpYaml } from '../packages/data/semantic-layer/src/io.ts'
+import { dumpYaml, type DimensionRef } from '@semantic-grounding/substrate'
 import {
   runBackfill,
   isReproduced,
   backfillRefs,
 } from './backfill-k11-deterministic-origin.ts'
-import type { DimensionRef } from '../packages/data/semantic-layer/src/types.ts'
 
 // ── Fixture builders (mirror discover-relations.spec.ts helpers) ─────────
 

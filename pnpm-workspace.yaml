@@ -18,6 +18,12 @@ overrides:
   'extract-zip>yauzl': '3.4.0'
   '@deepseek-ai/cosmokit': 'link:vendor/cosmokit'
   '@deepseek-ai/schemastery': 'link:vendor/schemastery'
+  # The substrate keeps module-level singletons (`_invalidationHooks`,
+  # `_corpusVersion`, `_snapshotCache`), so every consumer MUST resolve to
+  # exactly ONE copy or invalidation and cache coherence silently break. The
+  # override forces that single copy; consumers only declare the semver range
+  # (`^0.1.6-alpha.2`) because a `file:` specifier is not a legal peer range.
+  '@semantic-grounding/substrate': 'file:./vendor-tarballs/semantic-grounding-substrate-0.1.6-alpha.2.tgz'
 
 peerDependencyRules:
   allowedVersions:

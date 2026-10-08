@@ -4,7 +4,7 @@ Status: proposed
 
 ## Problem
 
-`packages/data/semantic-layer/src/basic-index.ts` (147 lines: `export class BasicIndex` + `EventIndexEntry`/`TableIndexEntry`), re-exported at `index.ts:107`, has ZERO production consumers. A grep (excluding semantic-layer) for `BasicIndex` across `packages/ + examples/ + scripts/ + apps/` finds only the api-catalog reflection (auto-generated from this source via `gen-cordis-catalog.ts`) + README + `package.json` description. No production source constructs or queries a `BasicIndex`. The Service reads via `loadEventDefinition`/`loadTableDefinition` (disk, `io.ts`), NOT through `BasicIndex`. The "P13b swap" the `index.ts` comment references is `CriticGuardData` swapping to `ctx.schema.load_*` — which bypasses `BasicIndex` entirely. It is a parallel lookup accelerator with no accelerator user.
+`basic-index.ts` (extracted to `@semantic-grounding/substrate`; was `packages/data/semantic-layer/src/` when this note landed) (147 lines: `export class BasicIndex` + `EventIndexEntry`/`TableIndexEntry`), re-exported at `index.ts:107`, has ZERO production consumers. A grep (excluding semantic-layer) for `BasicIndex` across `packages/ + examples/ + scripts/ + apps/` finds only the api-catalog reflection (auto-generated from this source via `gen-cordis-catalog.ts`) + README + `package.json` description. No production source constructs or queries a `BasicIndex`. The Service reads via `loadEventDefinition`/`loadTableDefinition` (disk, `io.ts`), NOT through `BasicIndex`. The "P13b swap" the `index.ts` comment references is `CriticGuardData` swapping to `ctx.schema.load_*` — which bypasses `BasicIndex` entirely. It is a parallel lookup accelerator with no accelerator user.
 
 ## Proposal
 

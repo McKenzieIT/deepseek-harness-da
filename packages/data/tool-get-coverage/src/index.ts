@@ -16,8 +16,8 @@ import {
   loadEvents,
   TableDefinitionSchema,
   EventDefinitionSchema,
-} from '@deepseek-ai/dsh-semantic-layer'
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
+} from '@semantic-grounding/substrate'
+import type { SemanticGroundingCore as SemanticLayerService } from '@semantic-grounding/substrate'
 
 export const name = 'tool-get-coverage'
 export const inject = ['tools']
@@ -157,7 +157,7 @@ export function apply(ctx: Context, _config: Config = {}): void {
     },
     async execute(args, exec) {
       if (exec.signal.aborted) throw new Error('get_coverage aborted')
-      const schema = ctx.get('schema')
+      const schema = ctx.get('schema') as SemanticLayerService | undefined
       return Promise.resolve(getCoverageResult(schema, args.domain))
     },
     presentCall(): GenericCallView {

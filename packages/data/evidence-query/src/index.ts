@@ -25,9 +25,8 @@ import {
   loadMetricDefinitions,
   TableDefinitionSchema,
   EventDefinitionSchema,
-} from '@deepseek-ai/dsh-semantic-layer'
-// Uses the declared ./src/* export path (pre-existing pattern; re-export from package root is tech debt)
-import { RelationGraph } from '@deepseek-ai/dsh-semantic-layer/src/relation-graph'
+  RelationGraph,
+} from '@semantic-grounding/substrate'
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { parsePersistedCaseRecord } from './persisted-record.ts'

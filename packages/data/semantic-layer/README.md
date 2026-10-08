@@ -1,5 +1,5 @@
 ---
-description: "Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening."
+description: "Cordis adapter for @semantic-grounding/substrate: provides the substrate's SemanticGroundingCore as ctx.schema, bridges the fiber lifetime to core.dispose(), reactively wires the optional audit + scopes collaborators, and ships the enrichment-llm-wiring plugin that feeds ctx.llm into the enrichment seam."
 kind: "package-reference"
 ---
 
@@ -9,84 +9,18 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-TODO: fill in Summary — placeholder seeded from package.json description.
-
-Semantic-layer substrate for the data agent: zod-mirrored RBI pydantic EventDefinition/TableDefinition + reader/writer + BasicIndex + write-tiers + ctx.schema seam (discover/describe/sample + load_*). P6b production hardening.
+A thin cordis adapter over `@semantic-grounding/substrate`, vendored as a tarball under `vendor-tarballs/`. The semantic layer itself — definition kinds, the alias and relation graph, retrieval projections, enrichment, and the two-tier audited write path — now lives in the substrate and is consumed as a vendored tarball. This package is the ~40-line host shell that mounts it into dsh.
 
 ## Table of Contents
 
-- [P6b grilling (5 decisions, all = A)](#p6b-grilling-5-decisions-all--a)
-- [Structure](#structure)
-- [`ctx.schema` seam](#ctxschema-seam)
-- [P13b swap](#p13b-swap)
-- [Graph projection and registry lifecycle (W27)](#graph-projection-and-registry-lifecycle-w27)
-- [Verification](#verification)
 - [Dev Note](#dev-note)
+- [What it provides](#what-it-provides)
+- [Shape: `ctx.schema` IS the core](#shape-ctxschema-is-the-core)
+- [Optional collaborators](#optional-collaborators)
+- [Structure](#structure)
+- [Verification](#verification)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
-
-
-Semantic-layer **substrate** for the data agent: zod-mirrored RBI pydantic `EventDefinition` / `TableDefinition` + reader/writer + `BasicIndex` + write-tiers + the `ctx.schema` seam. P6b production hardening (ports the throwaway `prototypes/p6-semantic-layer/`).
-
-The semantic layer is a **first-class citizen** of the data agent — NL→SQL success rides on it (MDL / metric layer / Text2DSL). The substrate stays cross-compatible with RBI's 531 curated tables/events/terminology (zod mirrors pydantic `extra=allow` / `model_validator` / `canonicalize_type` / round-trip).
-
-## P6b grilling (5 decisions, all = A)
-
-- **Q1 package form**: `packages/data/semantic-layer/` single package (`@deepseek-ai/dsh-semantic-layer`), group=data (mirrors `audit` / `phase-gate` / `nl2sql-engine`). `load_*` model-facing tools are DEFERRED separate tool packages (mirror `tool-search-data-sources`; the preset already names them `dsh-tool-load-table-definition` / `dsh-tool-load-event-definition`). Independent analysis grounded this: data capability packages are single-package Services; tools are always separate from their Service package; an independent `semantic/` group is over-abstraction for one package.
-- **Q2 seam scope**: `ctx.schema` covers BOTH live-engine (`discover` / `describe` / `sample`) AND substrate definitions (`loadEventDefinition` / `loadTableDefinition`). P13b `CriticGuardData` swaps to `ctx.schema.load_*` (params_fields / partitions).
-- **Q3 live-engine implementation**: DEFERRED — P6b ships the Service Definition + substrate + a stand-in provider for sync demo/tests; the real query provider (query-maxcompute sidecar adding schema tools, or an independent `schema-maxcompute`) is a follow-up. `discover` / `describe` / `sample` throw "no provider" until mounted; the P13b swap only needs substrate definitions, so it is unblocked.
-- **Q4 Tier-2 audit**: routes through `ctx.audit.recordTier2Write` (P8b real sqlite audit), NOT the prototype's flat JSON log — unified audit trail, intranet-security-first. The substrate `Tier2Recorder` interface is satisfied by `ctx.audit`; Tier-2 writes fail-loud if audit is not mounted (D5 "不可关").
-- **grounded**: `zod` (mirrors pydantic; `schemastery` has no `.passthrough`) + `js-yaml` substrate deps; reuse `@deepseek-ai/dsh-atomic-write` (`writeFileAtomic`: temp+wx+rename, mode stamped) for atomic writes.
-
-## Structure
-
-| file | role |
-| --- | --- |
-| `src/types.ts` | zod schemas mirroring RBI pydantic (`EventDefinition` / `TableDefinition` + sub-models, `TableMeta`, `canonicalizeType`). |
-| `src/io.ts` | reader (sync) / writer (async via `writeFileAtomic`) / sync-write / cache-invalidate (ADR-0011) / `Tier2Recorder` interface. |
-| `src/basic-index.ts` | `BasicIndex` — dep-free lookup accelerator; rebuilds on invalidation (NOT a validation cache). |
-| `src/pending.ts` | Tier-1 pending queue (suggest -> pending -> approve; approve-side P9-gated). Tier-2 is `ctx.audit` (not here). |
-| `src/index.ts` | `ctx.schema` Service Definition (`SemanticLayerService`) + `SchemaProvider` interface + `StandInSchemaProvider` + substrate re-exports. |
-
-## `ctx.schema` seam
-
-```ts
-import type { SemanticLayerService } from '@deepseek-ai/dsh-semantic-layer'
-declare module '@deepseek-ai/cordis' { interface Context { schema: SemanticLayerService } }
-```
-
-- `loadEventDefinition(name)` / `loadTableDefinition(name)` — substrate definitions (the P13b swap target: `params_fields` / `partitions`).
-- `discover(scopeId, kind?)` / `describe(table)` / `sample(table, n?)` — live-engine (deferred; `setSchemaProvider` mounts a real one).
-- `syncWrite(metas, opts)` / `updateTableMeta(name, updates, opts)` — Tier-2 persistent writes via `ctx.audit.recordTier2Write`.
-
-## P13b swap
-
-P13b's local `CriticGuardData` (params_fields/partitions from a thin YAML reader) swaps additively to `ctx.schema.load_*`. `CriticCtx{candidateTables, eventParams, partitionCols}` contract unchanged; P13b engine logic unchanged. `makeCriticCtx({ candidateTables, eventParams: EventDefinition.params_fields, partitionCols: TableDefinition.partitions.map(p => p.name) })`.
-
-## Graph projection and registry lifecycle (W27)
-
-The semantic-graph projection is **registry-driven**: `projectGraphNodes()` iterates every registered kind's `toGraphNode(def)` — no hand-written per-kind loops — so a kind registered after build reaches the graph without a gateway change. `buildGraph(root)` collects relations the same way (iterating the registry). A kind MUST declare `RelationDef.target` as the canonical node id its owning kind mints in `toGraphNode`, prefix included (`chart:first`, not `first`): the build stores targets verbatim, because two kinds may hold a node of the same name and mapping a bare name onto a prefixed id would silently route the edge to the wrong node. A target naming no projected node simply yields no edge.
-
-**Declared capabilities, not kind strings.** Two optional `DataSourceKindPlugin` fields carry what the projection would otherwise hardcode as `plugin.kind === 'table' | 'event' | 'concept'`, so a kind registered after build reaches everything a built-in does:
-
-- `derivedNodes` — the virtual definitions a kind derives from each of its own (`derive` / `toGraphNode` / `relations` / `toCorpusItem`). `metric` is the shipped case: `table` and `event` each derive one metric per inline `metrics:` entry, and those metrics reach the node projection, the graph edges, the alias index, and the retrieval corpus through this contributor alone.
-- `grouping` — declares this kind's nodes as taxonomy groups that other kinds join by naming the group in `GraphNodeProjection.domains`. `concept` is the shipped case: the build derives one `group → member` edge per resolved name (`related_to` for concepts), skips and reports unresolved names through `getDanglingDomainRefs()`, and never makes a grouping node its own member.
-
-`projectGraphNodes({ includeDerived })` (default `true`) skips deriving nodes the caller discards. The Schema Gateway passes its `includeMetrics` query field, so a graph request without metrics no longer pays for deriving them — and because derived nodes now come from the definitions the registry loop already loaded, the projection no longer runs a second full `tables/` + `events/` scan.
-
-**Disposer + cache invalidation.** `registry.register(plugin)` returns an idempotent disposer that removes only this contribution. The registry fires `onChange` listeners on both add and remove; the `SemanticLayerService` wires one in its constructor to invalidate `graphCache` + `graphCacheByScope`, so a disposed kind's nodes/edges do not linger and a re-registered kind flows through without a restart. Install contributions with `ctx.effect(() => registry.register(plugin))` so the lifetime tracks the owning fiber. The constructor wires that listener and its three built-in kinds through `ctx.effect` unconditionally: a context without the fiber lifecycle fails at construction instead of yielding a service whose graph cache is never invalidated.
-
-**Input contract.** `RelationDef.type` is an open `string` (`joins` | `derived_from` | `related_to` or a kind-declared type); `GraphNodeProjection` carries a plain `string` id + open `kind`. The Schema Gateway brands `id` at the Remote boundary. `storageDir` is a directory name, not a loader selector: the three bespoke layouts (`events` domain subdirs, flat `tables`, flat `concepts`) are selected by built-in plugin identity, so a registered kind declaring `storageDir: 'tables'` is still read generically and validated by its own `schema.safeParse` instead of receiving parsed `TableDefinition` objects. `io.ts` `loadDomains` rejects YAML arrays (uses `isPlainObject`, not `typeof === 'object'`) so a list-shaped `domains.yaml` degrades to `{}`.
-
-## Verification
-
-```sh
-tsc -b packages/data/semantic-layer/tsconfig.json   # typecheck
-pnpm vitest run packages/data/semantic-layer        # 5 scenarios (4 prototype + P13b swap)
-pnpm verify-cordis-config                            # bundle/preset mount resolves
-```
-
-Bundle wiring (the `semantic-layer` row in `packages/bundle/data-agent/cordis.patch.yml`) is a follow-up with the live-engine provider + the `load_*` tool packages.
 
 No runtime invariant companion is published because `@deepseek-ai/dsh-semantic-layer` owns no independently observable relationship that can diverge from its runtime state.
 
@@ -94,6 +28,48 @@ No runtime invariant companion is published because `@deepseek-ai/dsh-semantic-l
 
 None.
 
+## What it provides
+
+Two cordis plugins:
+
+| Plugin | Entry | Role |
+| --- | --- | --- |
+| `semantic-layer` | `src/index.ts` (default export) | Constructs a `SemanticGroundingCore` and provides it as `ctx.schema`. |
+| `enrichment-llm-wiring` | `src/llm-wiring-plugin.ts` | Adapts `ctx.llm.stream()` to the substrate's `TextLlm` and calls `wireEnrichmentLlm`, enabling the LLM semantic round. |
+
+Both are mounted as separate rows by `packages/bundle/data-agent/cordis.patch.yml` — the second through this package's `exports["./src/*"]` deep path.
+
+## Shape: `ctx.schema` IS the core
+
+`apply` provides the `SemanticGroundingCore` instance directly and forwards nothing. `SemanticGroundingCore` declares 24 `private` members, so it is **nominally** typed: a forwarding `class extends Service` wrapper would not be assignable to it, and tarball-bound consumers could never type `ctx.schema` with the substrate's own class. Providing the instance makes every `as SemanticGroundingCore` cast true, reaches all 32 public members, and leaves no forwarding code to drift.
+
+`ctx.effect(() => () => core.dispose())` is the fiber↔core lifetime bridge. `core.dispose()` releases the data-source-kind registrations and the graph cache-invalidation listeners the core owns; without it a withdrawn kind's nodes survive a fiber reload inside the cached graph.
+
+## Optional collaborators
+
+`audit` and `scopes` are deliberately **absent** from the plugin's `inject` list — `ctx.schema` must mount whether or not they exist. They are wired through nested `ctx.inject(...)` child fibers, which gate only themselves. The wiring is reactive rather than one-shot because the host may provide either service *after* the semantic layer mounts; a single apply-time probe would latch `undefined` forever.
+
+While `audit` is unmounted the Tier-2 recorder stays `undefined` and **every auditable write throws**. That is intentional (D5 / ADR-0001): there is no silent no-op recorder here. Audit-off is only legitimate as an explicit no-op recorder passed on purpose, never as a wiring accident.
+
+## Structure
+
+```
+src/index.ts              the semantic-layer adapter plugin (ctx.schema)
+src/llm-wiring-plugin.ts  the enrichment-llm-wiring plugin
+tests/service-wiring.spec.ts   the lifetime bridge (1 test)
+tests/llm-wiring-cl8.spec.ts   provider/model resolution (5 tests)
+```
+
+The substrate's own domain suite is green in the substrate repo; dsh does not re-test its dependency. The only behaviour this package owns is the lifetime bridge and the CL8 provider/model resolution, which is what `tests/` covers.
+
+## Verification
+
+```bash
+pnpm vitest run packages/data/semantic-layer/tests/
+pnpm run verify-cordis-config
+```
+
+`apps/web/tests/semantic-graph-remote.e2e.ts` is the adapter's contract test: it exercises the default export, the `ctx.schema` Context augmentation, the `Config` schema, and the `schema` service name across the real Remote boundary.
 
 ## Model Experience
 
@@ -144,9 +120,8 @@ Substrate definitions are stable on disk, so their rendered context repeats as a
 
 ## Known Limitations and Deferred Work
 
-- **Live-engine provider** — `discover` / `describe` / `sample` throw "no provider" until a real query provider (query-maxcompute sidecar or independent `schema-maxcompute`) is mounted. Deferred to a follow-up ticket.
-- **`load_*` model-facing tool packages** — `load_table_definition` / `load_event_definition` are deferred as separate tool packages (named in the preset as `dsh-tool-load-table-definition` / `dsh-tool-load-event-definition`).
-- **Canonicalize-on-write** — `writeTable` / `updateTableMeta` write raw data; on-disk faithfulness to canonical form is deferred (loaded data is already canonical so P13b swap is unaffected).
-- **Definition name path-traversal guard** — rejecting `/` `\` `..` in definition names is deferred (intranet-security-first defense-in-depth; currently no model-facing tool calls these directly).
-- **`updateTableMeta` concurrency lock** — read-merge-write should wrap `withFileLock` (`@deepseek-ai/dsh-atomic-write`) for concurrency safety. Deferred from prototype.
-- **Bundle wiring** — the `semantic-layer` row in `cordis.patch.yml` is pending the live-engine provider + tool packages.
+- **The domain limitations moved with the domain code.** Live-engine provider, canonicalize-on-write, the definition-name path-traversal guard and the `updateTableMeta` concurrency lock are all `@semantic-grounding/substrate` concerns now and are tracked there, not here.
+- **`ctx.schema` is absent from this repo's generated Cordis catalog.** The adapter provides an instance whose class ships in the tarball, so the catalog's source-walking projection cannot render it; it is named in `SERVICE_WALK_EXEMPTIONS` instead. Where the seam's API reference should live is still open.
+- **`SemanticLayerConfig` is declared locally and must track the substrate by hand.** A plugin's config type has to live in its own package (`gen-config-catalog` enforces it), so this interface and its `corpusVariant` union are a deliberate duplicate of the substrate's; a substrate-side change does not break the build here, it drifts silently.
+- **The substrate is not a release member, so dsh cannot publish while it is unpublished.** This package IS a release member (`packages/*/*`), so `release:pack` packs it and `release:verify-packed-install` resolves `@semantic-grounding/substrate` from the registry, where it is currently E404 — the `file:` override only applies inside this workspace. **Publishing `@semantic-grounding/substrate` is a blocking precondition for the next dsh publish.** (The release lane is independently red on master today for an unrelated `koffi` native build, and publishing is manual-only via `workflow_dispatch`, which is why this did not block the cutover.)
+- **`setScopeRegistry(ctx.get('scopes') as never)` is an unchecked cast.** The substrate does not export `ScopeRegistryLike`, so the scope-registry shape is not verified at this boundary.
